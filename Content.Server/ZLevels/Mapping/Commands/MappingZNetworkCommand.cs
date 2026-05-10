@@ -39,7 +39,7 @@ public sealed class MappingZNetworkCommand : LocalizedEntityCommands
             options.Add(new CompletionOption(map.ID));
         }
 
-        return CompletionResult.FromHintOptions(options, "CEZLevelMapPrototype");
+        return CompletionResult.FromHintOptions(options, "ZLevelMapPrototype");
     }
 
     public override void Execute(IConsoleShell shell, string argStr, string[] args)
@@ -58,7 +58,7 @@ public sealed class MappingZNetworkCommand : LocalizedEntityCommands
         //Get Map Prototype
         if (!_proto.Resolve<ZLevelMapPrototype>(args[0], out var indexedZMap))
         {
-            shell.WriteError($"Unknown CEZLevelMapPrototype {args[0]}");
+            shell.WriteError($"Unknown ZLevelMapPrototype {args[0]}");
             return;
         }
 

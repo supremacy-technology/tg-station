@@ -92,7 +92,7 @@ public sealed class GameMapMappingZNetworkCommand : LocalizedEntityCommands
 
         if (zNetwork == null)
         {
-            shell.WriteError($"No station with CEStationZLevelsComponent  found in map {mapProto.ID}");
+            shell.WriteError($"No station with StationZLevelsComponent  found in map {mapProto.ID}");
             return;
         }
 
