@@ -230,7 +230,6 @@ public abstract partial class SharedZLevelsSystem
 
         Entity<ZLevelMapComponent> checkingMap = (xform.MapUid.Value, zMapComp);
         var checkingGrid = mapGrid;
-        var hasLevelBelow = false;
 
         for (var floor = 0; floor <= maxFloors; floor++)
         {
@@ -241,7 +240,6 @@ public abstract partial class SharedZLevelsSystem
                 if (!_gridQuery.TryComp(tempCheckingMap, out var tempCheckingGrid))
                     continue;
 
-                hasLevelBelow = true;
                 checkingMap = tempCheckingMap.Value;
                 checkingGrid = tempCheckingGrid;
             }

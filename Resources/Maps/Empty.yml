@@ -1,19 +1,17 @@
 meta:
   format: 7
   category: Map
-  engineVersion: 267.3.0
+  engineVersion: 275.2.0
   forkId: ""
   forkVersion: ""
-  time: 10/31/2025 18:31:42
+  time: 05/10/2026 13:48:15
   entityCount: 1
 maps:
 - 1
-grids:
-- 1
+grids: []
 orphans: []
 nullspace: []
-tilemap:
-  0: Space
+tilemap: {}
 entities:
 - proto: ""
   entities:
@@ -27,32 +25,4 @@ entities:
     - type: GridTree
     - type: Broadphase
     - type: OccluderTree
-    - type: MapGrid
-      chunks: {}
-    - type: SpreaderGrid
-      updateAccumulator: 0.93349075
-    - type: GridPathfinding
-    - type: Gravity
-      gravityShakeSound: !type:SoundPathSpecifier
-        path: /Audio/Effects/alert.ogg
-      inherent: True
-      enabled: True
-    - type: MapAtmosphere
-      space: False
-      mixture:
-        volume: 2500
-        immutable: True
-        temperature: 293.15
-        moles:
-          Oxygen: 21.824879
-          Nitrogen: 82.10312
-    - type: DecalGrid
-      chunkCollection:
-        version: 2
-        nodes: []
-    - type: Forensics
-      residues: []
-      dnas: []
-      fibers: []
-      fingerprints: []
 ...
