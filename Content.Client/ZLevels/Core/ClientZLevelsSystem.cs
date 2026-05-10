@@ -24,7 +24,7 @@ public sealed partial class ClientZLevelsSystem : SharedZLevelsSystem
     [Dependency] private readonly SpriteSystem _sprite = default!;
     [Dependency] private readonly IEyeManager _eye = default!;
 
-    public static float ZLevelOffset = 0.7f;
+    public static float ZLevelOffset = 0.0f;
 
     public override void Initialize()
     {
@@ -39,7 +39,7 @@ public sealed partial class ClientZLevelsSystem : SharedZLevelsSystem
     {
         Angle rotation = _eye.CurrentEye.Rotation * -1;
         var localPosition = GetVisualsLocalPosition((ent, ent), Transform(ent));
-        var offset = rotation.RotateVec(new Vector2(0, localPosition * ZLevelOffset));
+        var offset = rotation.RotateVec(new Vector2(0, localPosition));
         args.Offset += offset;
     }
 

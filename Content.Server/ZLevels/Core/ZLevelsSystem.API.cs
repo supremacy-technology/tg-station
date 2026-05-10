@@ -133,7 +133,7 @@ public sealed partial class ZLevelsSystem
     {
         if (!TryComp<ZLevelsNetworkComponent>(networkUid, out var zNet))
         {
-            Log.Error($"CEZLevelsSystem: entity {networkUid} does not have CEZLevelsNetworkComponent.");
+            Log.Error($"CEZLevelsSystem: entity {networkUid} does not have ZLevelsNetworkComponent.");
             return;
         }
 
