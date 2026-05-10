@@ -97,15 +97,11 @@ public abstract partial class SharedZLevelsSystem
         args.VelocityDelta -= ZGravityForce * ent.Comp.GravityMultiplier;
     }
 
-    //Currently we have no need for active z-physics, so we can skip this costly loop.
-    //We will return to it when we ready.
-
-    /*
     public override void Update(float frameTime)
     {
         base.Update(frameTime);
 
-        var query = EntityQueryEnumerator<CEZPhysicsComponent, CEActiveZPhysicsComponent, TransformComponent, PhysicsComponent>();
+        var query = EntityQueryEnumerator<ZPhysicsComponent, ActiveZPhysicsComponent, TransformComponent, PhysicsComponent>();
         while (query.MoveNext(out var uid, out var zPhys, out _, out var xform, out var physics))
         {
             if (!_zMapQuery.HasComp(xform.MapUid))
@@ -117,7 +113,7 @@ public abstract partial class SharedZLevelsSystem
             if (physics.BodyStatus == BodyStatus.OnGround)
             {
                 //Velocity application
-                var velocityEv = new CEGetZVelocityEvent((uid, zPhys));
+                var velocityEv = new GetZVelocityEvent((uid, zPhys));
                 RaiseLocalEvent(uid, velocityEv);
 
                 zPhys.Velocity += velocityEv.VelocityDelta * frameTime;
@@ -142,7 +138,7 @@ public abstract partial class SharedZLevelsSystem
                 {
                     if (MathF.Abs(zPhys.Velocity) >= ImpactVelocityLimit)
                     {
-                        var ev = new CEZLevelHitEvent(-zPhys.Velocity);
+                        var ev = new ZLevelHitEvent(-zPhys.Velocity);
                         RaiseLocalEvent(uid, ref ev);
                         var land = new LandEvent(null, true);
                         RaiseLocalEvent(uid, ref land);
@@ -160,7 +156,7 @@ public abstract partial class SharedZLevelsSystem
 
                     if (!zPhys.CurrentStickyGround)
                     {
-                        var fallEv = new CEZLevelFallMapEvent();
+                        var fallEv = new ZLevelFallMapEvent();
                         RaiseLocalEvent(uid, ref fallEv);
                     }
                 }
@@ -172,7 +168,7 @@ public abstract partial class SharedZLevelsSystem
                 {
                     if (MathF.Abs(zPhys.Velocity) >= ImpactVelocityLimit)
                     {
-                        var ev = new CEZLevelHitEvent(zPhys.Velocity);
+                        var ev = new ZLevelHitEvent(zPhys.Velocity);
                         RaiseLocalEvent(uid, ref ev);
                         var land = new LandEvent(null, true);
                         RaiseLocalEvent(uid, ref land);
@@ -192,13 +188,12 @@ public abstract partial class SharedZLevelsSystem
                 zPhys.Velocity = MathF.Sign(zPhys.Velocity) * ZVelocityLimit;
 
             if (Math.Abs(oldVelocity - zPhys.Velocity) > 0.01f)
-                DirtyField(uid, zPhys, nameof(CEZPhysicsComponent.Velocity));
+                DirtyField(uid, zPhys, nameof(ZPhysicsComponent.Velocity));
 
             if (Math.Abs(oldHeight - zPhys.LocalPosition) > 0.01f)
-                DirtyField(uid, zPhys, nameof(CEZPhysicsComponent.LocalPosition));
+                DirtyField(uid, zPhys, nameof(ZPhysicsComponent.LocalPosition));
         }
     }
-    */
 
     /// <summary>
     /// Returns the last cached distance to the floor.
@@ -233,24 +228,24 @@ public abstract partial class SharedZLevelsSystem
         var worldPosI = _transform.GetGridOrMapTilePosition(target);
         var worldPos = _transform.GetWorldPosition(target);
 
-        //Select current map by default
         Entity<ZLevelMapComponent> checkingMap = (xform.MapUid.Value, zMapComp);
         var checkingGrid = mapGrid;
+        var hasLevelBelow = false;
 
         for (var floor = 0; floor <= maxFloors; floor++)
         {
-            if (floor != 0) //Select map below
+            if (floor != 0)
             {
                 if (!TryMapOffset((checkingMap.Owner, checkingMap.Comp), -floor, out var tempCheckingMap))
                     continue;
                 if (!_gridQuery.TryComp(tempCheckingMap, out var tempCheckingGrid))
                     continue;
 
+                hasLevelBelow = true;
                 checkingMap = tempCheckingMap.Value;
                 checkingGrid = tempCheckingGrid;
             }
 
-            //Check all types of ZHeight entities
             var query = _map.GetAnchoredEntitiesEnumerator(checkingMap, checkingGrid, worldPosI);
             while (query.MoveNext(out var uid))
             {
@@ -258,14 +253,13 @@ public abstract partial class SharedZLevelsSystem
                     continue;
 
                 var dir = _transform.GetWorldRotation(uid.Value).GetCardinalDir();
-
                 var local = new Vector2((worldPos.X % 1 + 1) % 1, (worldPos.Y % 1 + 1) % 1);
 
                 var t = dir switch
                 {
-                    Direction.East => heightComp.Corner ? (local.X + 1f - local.Y) / 2f : local.X,
-                    Direction.West => heightComp.Corner ? (1f - local.X + local.Y) / 2f : 1f - local.X,
-                    Direction.North => heightComp.Corner ? (local.X + local.Y) / 2f : local.Y,
+                    Direction.East  => heightComp.Corner ? (local.X + 1f - local.Y) / 2f : local.X,
+                    Direction.West  => heightComp.Corner ? (1f - local.X + local.Y) / 2f : 1f - local.X,
+                    Direction.North => heightComp.Corner ? (local.X + local.Y) / 2f        : local.Y,
                     Direction.South => heightComp.Corner ? (1f - local.X + 1f - local.Y) / 2f : 1f - local.Y,
                     _ => 0.5f,
                 };
@@ -277,19 +271,14 @@ public abstract partial class SharedZLevelsSystem
                     continue;
 
                 if (curve.Count == 1)
-                {
-                    var groundY = curve[0];
-                    // groundHeight is negative downwards: -floor + groundY
-                    return -floor + groundY;
-                }
+                    return -floor + curve[0];
 
-                var step = 1f / (curve.Count - 1);
+                var step  = 1f / (curve.Count - 1);
                 var index = (int)(t / step);
-                var frac = (t - index * step) / step;
+                var frac  = (t - index * step) / step;
 
-                var y0 = curve[Math.Clamp(index, 0, curve.Count - 1)];
+                var y0 = curve[Math.Clamp(index,     0, curve.Count - 1)];
                 var y1 = curve[Math.Clamp(index + 1, 0, curve.Count - 1)];
-
                 var groundYInterp = MathHelper.Lerp(y0, y1, frac);
 
                 if (target.Comp.Velocity < 0 && target.Comp.Velocity > -2f && heightComp.Stick)
@@ -298,13 +287,12 @@ public abstract partial class SharedZLevelsSystem
                 return -floor + groundYInterp;
             }
 
-            //No ZEntities found, check floor tiles
             if (_map.TryGetTileRef(checkingMap, checkingGrid, worldPosI, out var tileRef) &&
                 !tileRef.Tile.IsEmpty)
-                return -floor; // tile ground has groundY == 0 -> -floor
+                return -floor;
         }
 
-        return -maxFloors;
+        return 0f;
     }
 
     /// <summary>
