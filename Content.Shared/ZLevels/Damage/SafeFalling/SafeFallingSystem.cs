@@ -1,0 +1,25 @@
+/*
+ * This file is sublicensed under MIT License
+ * https://github.com/space-wizards/space-station-14/blob/master/LICENSE.TXT
+ */
+
+namespace Content.Shared.ZLevels.Damage.SafeFalling;
+
+public sealed class SafeFallingSystem : EntitySystem
+{
+    public override void Initialize()
+    {
+        base.Initialize();
+
+        SubscribeLocalEvent<SafeFallingComponent, ZFallingDamageCalculateEvent>(OnFallingDamageCalculate);
+    }
+
+    private void OnFallingDamageCalculate(Entity<SafeFallingComponent> ent, ref ZFallingDamageCalculateEvent args)
+    {
+        if (args.Fallen == ent.Owner)
+            return;
+
+        args.DamageMultiplier *= ent.Comp.DamageMultiplier;
+        args.StunMultiplier *= ent.Comp.StunMultiplier;
+    }
+}

@@ -27,6 +27,9 @@
         density: 15
         layer:
         - GhostImpassable
+  - type: ZPhysics
+    autoStep: false
+  - type: ZLevelGhostMover
 
 # shared parent between aghosts, replay spectators and normal observers
 - type: entity

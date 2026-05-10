@@ -1,0 +1,11 @@
+/*
+ * This file is sublicensed under MIT License
+ * https://github.com/space-wizards/space-station-14/blob/master/LICENSE.TXT
+ */
+
+using Content.Shared.ZLevels.Roof;
+
+namespace Content.Client.ZLevels.Roof;
+
+/// <inheritdoc/>
+public sealed class ClientRoofSystem : ZSharedRoofSystem;
