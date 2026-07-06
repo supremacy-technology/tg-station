@@ -8,10 +8,12 @@ meta:
   entityCount: 1
 maps:
 - 1
-grids: []
+grids:
+- 1
 orphans: []
 nullspace: []
-tilemap: {}
+tilemap:
+  0: Space
 entities:
 - proto: ""
   entities:
@@ -25,4 +27,6 @@ entities:
     - type: GridTree
     - type: Broadphase
     - type: OccluderTree
+    - type: MapGrid
+      chunks: {}
 ...
