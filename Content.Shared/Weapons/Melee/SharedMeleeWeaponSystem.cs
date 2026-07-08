@@ -908,8 +908,6 @@ public abstract class SharedMeleeWeaponSystem : EntitySystem
         if (attemptEvent.Cancelled)
             return false;
 
-        var chance = CalculateDisarmChance(user, target.Value, inTargetHand, combatMode);
-
         // At this point we diverge
         if (_netMan.IsClient)
         {
@@ -918,52 +916,12 @@ public abstract class SharedMeleeWeaponSystem : EntitySystem
             return true;
         }
 
+        // The SS13-style shove system fully resolves the interaction (movement, stagger, knockdown,
+        // item drops and its own popups). The legacy random-chance DisarmedEvent path below used to
+        // resolve the same disarm, so running both double-handled every shove - shove is now the
+        // sole handler. Always report success so the swing animation/cooldown still plays.
         _disarming.TryDisarm(user, target.Value, inTargetHand);
-
-        if (_random.Prob(chance))
-        {
-            return false;
-        }
-
-        var eventArgs = new DisarmedEvent(target.Value, user, 1 - chance);
-        RaiseLocalEvent(target.Value, ref eventArgs);
-
-        // Nothing handled it so abort.
-        if (!eventArgs.Handled)
-        {
-            return false;
-        }
-
         Interaction.DoContactInteraction(user, target);
-        AdminLogger.Add(LogType.DisarmedAction, $"{ToPrettyString(user):user} used disarm on {ToPrettyString(target):target}");
-
-        AdminLogger.Add(LogType.DisarmedAction, $"{ToPrettyString(user):user} used disarm on {ToPrettyString(target):target}");
-
-        _audio.PlayPvs(combatMode.DisarmSuccessSound, target.Value, AudioParams.Default.WithVariation(0.025f).WithVolume(5f));
-        var targetEnt = Identity.Entity(target.Value, EntityManager);
-        var userEnt = Identity.Entity(user, EntityManager);
-
-        var msgOther = Loc.GetString(
-            eventArgs.PopupPrefix + "popup-message-other-clients",
-            ("performerName", userEnt),
-            ("targetName", targetEnt));
-
-        var msgUser = Loc.GetString(eventArgs.PopupPrefix + "popup-message-cursor", ("targetName", targetEnt));
-
-        var filterOther = Filter.PvsExcept(user, entityManager: EntityManager);
-
-        PopupSystem.PopupEntity(msgOther, user, filterOther, true);
-        PopupSystem.PopupEntity(msgUser, target.Value, user);
-
-        if (eventArgs.IsStunned)
-        {
-
-            PopupSystem.PopupEntity(Loc.GetString("stunned-component-disarm-success-others", ("source", userEnt), ("target", targetEnt)), targetEnt, Filter.PvsExcept(user), true, PopupType.LargeCaution);
-            PopupSystem.PopupCursor(Loc.GetString("stunned-component-disarm-success", ("target", targetEnt)), user, PopupType.Large);
-
-            AdminLogger.Add(LogType.DisarmedKnockdown, LogImpact.Medium, $"{ToPrettyString(user):user} knocked down {ToPrettyString(target):target}");
-        }
-
         return true;
     }
 
