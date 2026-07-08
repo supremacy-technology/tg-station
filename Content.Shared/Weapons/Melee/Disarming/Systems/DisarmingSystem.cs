@@ -156,7 +156,11 @@ public sealed class DisarmingSystem : EntitySystem
             if ((flags & ShoveFlags.Blocked) != 0 && (flags & (ShoveFlags.KnockdownBlocked | ShoveFlags.CanKickSide)) == 0)
             {
                 _stun.TryKnockdown(target, KnockdownDaze, refresh: true);
-                _popup.PopupPredicted(Loc.GetString("disarm-shove-knockdown"), target, target);
+                // recipient (disarmer) sees the "-user" line, everyone else the "-others" line.
+                _popup.PopupPredicted(
+                    Loc.GetString("disarm-knockdown-user", ("target", target)),
+                    Loc.GetString("disarm-knockdown-others", ("user", disarmer), ("target", target)),
+                    target, disarmer);
                 _adminLogger.Add(LogType.MeleeHit, LogImpact.Low,
                     $"{ToPrettyString(disarmer):disarmer} shoved {ToPrettyString(target):target} into something solid, knocking them down");
                 return;
@@ -171,13 +175,28 @@ public sealed class DisarmingSystem : EntitySystem
             kicked.NoSideKickUntil = _timing.CurTime + KickChainParalyze;
             Dirty(target, kicked);
 
-            _popup.PopupPredicted(Loc.GetString("disarm-kick-chain"), target, target);
+            _popup.PopupPredicted(
+                Loc.GetString("disarm-kick-user", ("target", target)),
+                Loc.GetString("disarm-kick-others", ("user", disarmer), ("target", target)),
+                target, disarmer);
             _adminLogger.Add(LogType.MeleeHit, LogImpact.Medium,
                 $"{ToPrettyString(disarmer):disarmer} kicked {ToPrettyString(target):target} onto their side");
             return;
         }
 
-        _popup.PopupPredicted(Loc.GetString("disarm-shove"), target, disarmer);
+        // General shove message - weapon variant if a weapon was used (SS13 "[ with weapon]").
+        string shoveUser, shoveOthers;
+        if (weapon is { } shoveWeapon)
+        {
+            shoveUser = Loc.GetString("disarm-shove-user-weapon", ("target", target), ("weapon", shoveWeapon));
+            shoveOthers = Loc.GetString("disarm-shove-others-weapon", ("user", disarmer), ("target", target), ("weapon", shoveWeapon));
+        }
+        else
+        {
+            shoveUser = Loc.GetString("disarm-shove-user", ("target", target));
+            shoveOthers = Loc.GetString("disarm-shove-others", ("user", disarmer), ("target", target));
+        }
+        _popup.PopupPredicted(shoveUser, shoveOthers, target, disarmer);
 
         if (_hands.TryGetActiveItem(target, out var heldItem))
         {
@@ -188,7 +207,11 @@ public sealed class DisarmingSystem : EntitySystem
             if ((staggeredNow && droppable) || lyingDown)
             {
                 _hands.TryDrop(target, heldItem.Value);
-                _popup.PopupPredicted(Loc.GetString("disarm-item-dropped", ("item", heldItem.Value)), target, disarmer);
+                // recipient (the target, who lost the item) sees "You drop X", others "Y drops X".
+                _popup.PopupPredicted(
+                    Loc.GetString("disarm-drop-target", ("item", heldItem.Value)),
+                    Loc.GetString("disarm-drop-others", ("target", target), ("item", heldItem.Value)),
+                    target, target);
             }
         }
 
