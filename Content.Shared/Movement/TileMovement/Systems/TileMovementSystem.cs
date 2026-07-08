@@ -134,6 +134,96 @@ public sealed class TileMovementSystem : EntitySystem
         return true;
     }
 
+    /// <summary>
+    /// Grid + tile indices the entity currently occupies, or null if it isn't on a grid at all
+    /// (e.g. floating in open space). Used by DisarmingSystem to check "are these two entities on
+    /// the same tile" without caring about the tile-mover interpolation details.
+    /// </summary>
+    public (EntityUid GridUid, Vector2i Tile)? GetTile(EntityUid uid)
+    {
+        if (!_xformQuery.TryComp(uid, out var xform)
+            || xform.GridUid is not { } gridUid
+            || !_gridQuery.TryComp(gridUid, out var grid))
+        {
+            return null;
+        }
+
+        return (gridUid, _mapSystem.TileIndicesFor(gridUid, grid, xform.Coordinates));
+    }
+
+    /// <summary>
+    /// Coordinates one tile over from <paramref name="coords"/> in the given direction. If
+    /// <paramref name="coords"/> isn't anchored to a grid entity (open space), falls back to a flat
+    /// one-unit world-space offset rather than a true tile step.
+    /// </summary>
+    public EntityCoordinates GetAdjacentTile(EntityCoordinates coords, Direction dir)
+    {
+        var offset = DirToOffset(dir);
+
+        if (!_gridQuery.TryComp(coords.EntityId, out var grid))
+            return coords.Offset(DirToVector(dir));
+
+        var gridUid = coords.EntityId;
+        var current = _mapSystem.TileIndicesFor(gridUid, grid, coords);
+        return _mapSystem.ToCenterCoordinates(gridUid, current + offset, grid);
+    }
+
+    /// <summary>
+    /// Attempts to move the entity one tile in the given direction immediately - used for shove/disarm
+    /// knockback rather than player input. Entities with a <see cref="TileMoverComponent"/> get the
+    /// normal interpolated step (and are refused if they're already mid-step); anything else is moved
+    /// instantly if the destination tile is free. Returns false if the entity is off-grid or the
+    /// destination tile is blocked.
+    /// </summary>
+    public bool TryMoveTile(EntityUid uid, Direction dir)
+    {
+        var offset = DirToOffset(dir);
+
+        if (TryComp<TileMoverComponent>(uid, out var mover))
+        {
+            if (mover.IsMoving)
+                return false;
+
+            return TryStartStep((uid, mover), offset, sprinting: false);
+        }
+
+        if (!_xformQuery.TryComp(uid, out var xform)
+            || xform.GridUid is not { } gridUid
+            || !_gridQuery.TryComp(gridUid, out var grid))
+        {
+            return false;
+        }
+
+        var current = _mapSystem.TileIndicesFor(gridUid, grid, xform.Coordinates);
+        var target = current + offset;
+
+        if (!CanEnterTile(gridUid, grid, target, uid))
+            return false;
+
+        var center = _mapSystem.ToCenterCoordinates(gridUid, target, grid);
+        _transform.SetCoordinates(uid, center);
+        return true;
+    }
+
+    private static Vector2i DirToOffset(Direction dir) => dir switch
+    {
+        Direction.East => new Vector2i(1, 0),
+        Direction.NorthEast => new Vector2i(1, 1),
+        Direction.North => new Vector2i(0, 1),
+        Direction.NorthWest => new Vector2i(-1, 1),
+        Direction.West => new Vector2i(-1, 0),
+        Direction.SouthWest => new Vector2i(-1, -1),
+        Direction.South => new Vector2i(0, -1),
+        Direction.SouthEast => new Vector2i(1, -1),
+        _ => new Vector2i(0, 0),
+    };
+
+    private static Vector2 DirToVector(Direction dir)
+    {
+        var offset = DirToOffset(dir);
+        return new Vector2(offset.X, offset.Y);
+    }
+
     public override void Update(float frameTime)
     {
         var query = EntityQueryEnumerator<TileMoverComponent>();

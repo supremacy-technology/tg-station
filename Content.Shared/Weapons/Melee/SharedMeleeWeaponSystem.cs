@@ -26,6 +26,7 @@ using Content.Shared.Physics;
 using Content.Shared.Popups;
 using Content.Shared.StatusEffect;
 using Content.Shared.Weapons.Melee.Components;
+using Content.Shared.Weapons.Melee.Disarming.Systems;
 using Content.Shared.Weapons.Melee.Events;
 using Content.Shared.Weapons.Ranged.Components;
 using Content.Shared.Weapons.Ranged.Events;
@@ -66,6 +67,7 @@ public abstract class SharedMeleeWeaponSystem : EntitySystem
     [Dependency] protected readonly SharedTransformSystem TransformSystem = default!;
     [Dependency] private   readonly SharedStaminaSystem _stamina = default!;
     [Dependency] private   readonly DamageExamineSystem _damageExamine = default!;
+    [Dependency] private   readonly DisarmingSystem _disarming = default!;
 
     [Dependency] private readonly EntityQuery<DamageableComponent> _damageQuery = default!;
 
@@ -915,6 +917,8 @@ public abstract class SharedMeleeWeaponSystem : EntitySystem
             _meleeSound.PlaySwingSound(user, meleeUid, component);
             return true;
         }
+
+        _disarming.TryDisarm(user, target.Value, inTargetHand);
 
         if (_random.Prob(chance))
         {
