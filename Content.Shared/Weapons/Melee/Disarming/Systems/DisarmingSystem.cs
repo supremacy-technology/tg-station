@@ -10,9 +10,12 @@ using Content.Shared.Stunnable;
 using Content.Shared.Tag;
 using Content.Shared.Throwing;
 using Content.Shared.Weapons.Melee.Disarming.Components;
+using Robust.Shared.Audio;
+using Robust.Shared.Audio.Systems;
 using Robust.Shared.Map;
 using Robust.Shared.Map.Components;
 using Robust.Shared.Maths;
+using Robust.Shared.Player;
 using Robust.Shared.Prototypes;
 using Robust.Shared.Timing;
 
@@ -41,6 +44,7 @@ public sealed class DisarmingSystem : EntitySystem
     [Dependency] private readonly TurfSystem _turf = default!;
     [Dependency] private readonly SharedMapSystem _map = default!;
     [Dependency] private readonly ThrowingSystem _throwing = default!;
+    [Dependency] private readonly SharedAudioSystem _audio = default!;
 
     [Dependency] private readonly EntityQuery<StandingStateComponent> _standingQuery = default!;
     [Dependency] private readonly EntityQuery<BuckleComponent> _buckleQuery = default!;
@@ -54,6 +58,9 @@ public sealed class DisarmingSystem : EntitySystem
     private const LookupFlags TileLookup = LookupFlags.Dynamic | LookupFlags.Static;
 
     private static readonly ProtoId<TagPrototype> DisarmDroppableTag = "DisarmDroppable";
+
+    // SS13 plays shove.ogg unarmed / glassbash.ogg with a weapon; thudswoosh is SS14's shove sound.
+    private static readonly SoundSpecifier ShoveSound = new SoundPathSpecifier("/Audio/Weapons/shove.ogg");
 
     private static readonly TimeSpan StaggerLength = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan StaggerMax = TimeSpan.FromSeconds(10);
@@ -89,6 +96,10 @@ public sealed class DisarmingSystem : EntitySystem
         var hitEv = new DisarmHitEvent(disarmer, weapon);
         RaiseLocalEvent(target, ref hitEv);
 
+        // Shove feedback sound (server-authoritative - this whole method only runs on the server, so a
+        // predicted sound would be suppressed for the shover; PlayPvs reaches everyone including them).
+        _audio.PlayPvs(ShoveSound, target);
+
         // Shove the target straight away from the disarmer (SS13 get_dir(user, target)). The delta is a
         // world-space vector, but the tile step below and the tile the target sits on are in the grid's
         // frame - so rotate the delta into the grid frame before turning it into a Direction. Skipping
@@ -118,10 +129,11 @@ public sealed class DisarmingSystem : EntitySystem
             {
                 flags |= ShoveFlags.Blocked;
             }
-            else
+            else if (!IsBuckled(target))
             {
                 // Normal continuous-movement shove: throw them a tile back rather than tile-locking.
                 // pushbackRatio 0 so only the target moves - the shover shouldn't recoil like a throw.
+                // A buckled target (sitting in a chair) stays put - don't rip them out of the seat.
                 _throwing.TryThrow(target, destCoords.Value, ShoveThrowSpeed, disarmer,
                     pushbackRatio: 0f, compensateFriction: true, doSpin: false, playSound: false);
             }
@@ -157,7 +169,7 @@ public sealed class DisarmingSystem : EntitySystem
             {
                 _stun.TryKnockdown(target, KnockdownDaze, refresh: true);
                 // recipient (disarmer) sees the "-user" line, everyone else the "-others" line.
-                _popup.PopupPredicted(
+                ShovePopup(
                     Loc.GetString("disarm-knockdown-user", ("target", target)),
                     Loc.GetString("disarm-knockdown-others", ("user", disarmer), ("target", target)),
                     target, disarmer);
@@ -167,7 +179,10 @@ public sealed class DisarmingSystem : EntitySystem
             }
         }
 
-        if ((flags & ShoveFlags.CanKickSide) != 0)
+        // Knockdown only happens when the target is shoved into something solid (a wall or another mob).
+        // The kick finisher is gated on Blocked too, so shoving a staggered target in the open just
+        // pushes/staggers them instead of dropping them - no "shoved by air" fall.
+        if ((flags & ShoveFlags.CanKickSide) != 0 && (flags & ShoveFlags.Blocked) != 0)
         {
             _stun.TryAddParalyzeDuration(target, KickChainParalyze);
             // Stop the kick chaining forever: further shoves within this window stagger instead.
@@ -175,7 +190,7 @@ public sealed class DisarmingSystem : EntitySystem
             kicked.NoSideKickUntil = _timing.CurTime + KickChainParalyze;
             Dirty(target, kicked);
 
-            _popup.PopupPredicted(
+            ShovePopup(
                 Loc.GetString("disarm-kick-user", ("target", target)),
                 Loc.GetString("disarm-kick-others", ("user", disarmer), ("target", target)),
                 target, disarmer);
@@ -196,7 +211,7 @@ public sealed class DisarmingSystem : EntitySystem
             shoveUser = Loc.GetString("disarm-shove-user", ("target", target));
             shoveOthers = Loc.GetString("disarm-shove-others", ("user", disarmer), ("target", target));
         }
-        _popup.PopupPredicted(shoveUser, shoveOthers, target, disarmer);
+        ShovePopup(shoveUser, shoveOthers, target, disarmer);
 
         if (_hands.TryGetActiveItem(target, out var heldItem))
         {
@@ -208,7 +223,7 @@ public sealed class DisarmingSystem : EntitySystem
             {
                 _hands.TryDrop(target, heldItem.Value);
                 // recipient (the target, who lost the item) sees "You drop X", others "Y drops X".
-                _popup.PopupPredicted(
+                ShovePopup(
                     Loc.GetString("disarm-drop-target", ("item", heldItem.Value)),
                     Loc.GetString("disarm-drop-others", ("target", target), ("item", heldItem.Value)),
                     target, target);
@@ -277,6 +292,17 @@ public sealed class DisarmingSystem : EntitySystem
     private bool IsBuckled(EntityUid uid)
     {
         return _buckleQuery.TryComp(uid, out var buckle) && buckle.Buckled;
+    }
+
+    /// <summary>
+    /// SS13 visible_message/to_chat split: <paramref name="recipient"/> sees their own line, everyone
+    /// else in PVS sees the third-person line. Uses server popups (not PopupPredicted) because TryDisarm
+    /// only runs server-side - a predicted popup would be suppressed for the shover's own client.
+    /// </summary>
+    private void ShovePopup(string recipientMessage, string othersMessage, EntityUid uid, EntityUid recipient)
+    {
+        _popup.PopupEntity(recipientMessage, uid, recipient);
+        _popup.PopupEntity(othersMessage, uid, Filter.PvsExcept(recipient, entityManager: EntityManager), true);
     }
 
     /// <summary>

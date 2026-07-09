@@ -520,7 +520,7 @@ public abstract class SharedMeleeWeaponSystem : EntitySystem
             }
             var missEvent = new MeleeHitEvent(new List<EntityUid>(), user, meleeUid, damage, null);
             RaiseLocalEvent(meleeUid, missEvent);
-            _meleeSound.PlaySwingSound(user, meleeUid, component);
+            //_meleeSound.PlaySwingSound(user, meleeUid, component);
             return;
         }
 
@@ -623,7 +623,7 @@ public abstract class SharedMeleeWeaponSystem : EntitySystem
             RaiseLocalEvent(meleeUid, missEvent);
 
             // immediate audio feedback
-            _meleeSound.PlaySwingSound(user, meleeUid, component);
+            //_meleeSound.PlaySwingSound(user, meleeUid, component);
 
             return true;
         }
@@ -859,10 +859,10 @@ public abstract class SharedMeleeWeaponSystem : EntitySystem
         }
 
 
-        if (MobState.IsIncapacitated(target.Value))
+        /*if (MobState.IsIncapacitated(target.Value))
         {
             return false;
-        }
+        }*/
 
         if (!TryComp<CombatModeComponent>(user, out var combatMode) ||
             combatMode.CanDisarm != true)
@@ -912,7 +912,7 @@ public abstract class SharedMeleeWeaponSystem : EntitySystem
         if (_netMan.IsClient)
         {
             // Play a sound to give instant feedback; same with playing the animations
-            _meleeSound.PlaySwingSound(user, meleeUid, component);
+            //_meleeSound.PlaySwingSound(user, meleeUid, component);
             return true;
         }
 
