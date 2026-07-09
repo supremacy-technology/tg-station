@@ -61,7 +61,7 @@ public sealed class DisarmingSystem : EntitySystem
     private const float ShoveThrowSpeed = 5f;
     private const LookupFlags TileLookup = LookupFlags.Dynamic | LookupFlags.Static;
 
-    private static readonly ProtoId<TagPrototype> DisarmDroppableTag = "DisarmDroppable";
+    //private static readonly ProtoId<TagPrototype> DisarmDroppableTag = "DisarmDroppable";
 
     // SS13 plays shove.ogg unarmed / glassbash.ogg with a weapon;
     private static readonly SoundSpecifier ShoveSound = new SoundPathSpecifier("/Audio/Weapons/shove.ogg");
@@ -235,10 +235,10 @@ public sealed class DisarmingSystem : EntitySystem
         }
         ShovePopup(shoveUser, shoveOthers, target, disarmer);
 
-        if (_hands.TryGetActiveItem(target, out var heldItem))
+        /*if (_hands.TryGetActiveItem(target, out var heldItem))
         {
             var staggeredNow = TryComp<StaggeredComponent>(target, out var s) && s.StaggeredUntil > _timing.CurTime;
-            var droppable = _tag.HasTag(heldItem.Value, DisarmDroppableTag);
+            //var droppable = _tag.HasTag(heldItem.Value, DisarmDroppableTag);
             var lyingDown = !IsStanding(target);
 
             if ((staggeredNow && droppable) || lyingDown)
@@ -250,7 +250,7 @@ public sealed class DisarmingSystem : EntitySystem
                     Loc.GetString("disarm-drop-others", ("target", target), ("item", heldItem.Value)),
                     target, target);
             }
-        }
+        }*/
 
         if ((flags & ShoveFlags.CanStagger) != 0)
         {
