@@ -1,5 +1,8 @@
+using System.Diagnostics.CodeAnalysis;
 using Content.Shared.Administration.Logs;
 using Content.Shared.Buckle.Components;
+using Content.Shared.Climbing.Components;
+using Content.Shared.Climbing.Systems;
 using Content.Shared.Database;
 using Content.Shared.Hands.EntitySystems;
 using Content.Shared.Maps;
@@ -45,6 +48,7 @@ public sealed class DisarmingSystem : EntitySystem
     [Dependency] private readonly SharedMapSystem _map = default!;
     [Dependency] private readonly ThrowingSystem _throwing = default!;
     [Dependency] private readonly SharedAudioSystem _audio = default!;
+    [Dependency] private readonly ClimbSystem _climb = default!;
 
     [Dependency] private readonly EntityQuery<StandingStateComponent> _standingQuery = default!;
     [Dependency] private readonly EntityQuery<BuckleComponent> _buckleQuery = default!;
@@ -59,7 +63,7 @@ public sealed class DisarmingSystem : EntitySystem
 
     private static readonly ProtoId<TagPrototype> DisarmDroppableTag = "DisarmDroppable";
 
-    // SS13 plays shove.ogg unarmed / glassbash.ogg with a weapon; thudswoosh is SS14's shove sound.
+    // SS13 plays shove.ogg unarmed / glassbash.ogg with a weapon;
     private static readonly SoundSpecifier ShoveSound = new SoundPathSpecifier("/Audio/Weapons/shove.ogg");
 
     private static readonly TimeSpan StaggerLength = TimeSpan.FromSeconds(3);
@@ -122,6 +126,22 @@ public sealed class DisarmingSystem : EntitySystem
             foreach (var occupant in _turf.GetEntitiesInTile(destCoords.Value, TileLookup))
                 RaiseLocalEvent(occupant, ref preShove);
 
+            // Shoved into a table (or other climbable): end up on top of it instead of being knocked
+            // down against it (SS13 "shove them onto the table"). Only if the target can climb.
+            /*if (!IsBuckled(target)
+                 && HasComp<ClimbingComponent>(target)
+                 && TryGetClimbableAt(destCoords.Value, target, out var climbable))
+            {
+                _climb.Climb(target, disarmer, climbable.Value, silent: false);
+                ShovePopup(
+                    Loc.GetString("disarm-table-user", ("target", target)),
+                    Loc.GetString("disarm-table-others", ("user", disarmer), ("target", target)),
+                    target, disarmer);
+                _adminLogger.Add(LogType.MeleeHit, LogImpact.Low,
+                    $"{ToPrettyString(disarmer):disarmer} shoved {ToPrettyString(target):target} onto {ToPrettyString(climbable.Value):climbable}");
+                return;
+            }*/
+
             var blocked = preShove.Solid
                 || (destTile is { } dt && _turf.IsTileBlocked(dt, ShoveMask));
 
@@ -181,8 +201,10 @@ public sealed class DisarmingSystem : EntitySystem
 
         // Knockdown only happens when the target is shoved into something solid (a wall or another mob).
         // The kick finisher is gated on Blocked too, so shoving a staggered target in the open just
-        // pushes/staggers them instead of dropping them - no "shoved by air" fall.
-        if ((flags & ShoveFlags.CanKickSide) != 0 && (flags & ShoveFlags.Blocked) != 0)
+        // pushes/staggers them instead of dropping them - no "shoved by air" fall. A buckled target
+        // (strapped into a chair) is never kicked/knocked down - chairs often sit against a wall, which
+        // would otherwise count as "blocked" and drop them right out of the seat.
+        if ((flags & ShoveFlags.CanKickSide) != 0 && (flags & ShoveFlags.Blocked) != 0 && !IsBuckled(target))
         {
             _stun.TryAddParalyzeDuration(target, KickChainParalyze);
             // Stop the kick chaining forever: further shoves within this window stagger instead.
@@ -303,6 +325,28 @@ public sealed class DisarmingSystem : EntitySystem
     {
         _popup.PopupEntity(recipientMessage, uid, recipient);
         _popup.PopupEntity(othersMessage, uid, Filter.PvsExcept(recipient, entityManager: EntityManager), true);
+    }
+
+    /// <summary>
+    /// First climbable entity (table, altar, ...) occupying the destination tile, if any - used to make
+    /// a shove land the target on top of it rather than bounce them off it.
+    /// </summary>
+    private bool TryGetClimbableAt(EntityCoordinates coords, EntityUid self, [NotNullWhen(true)] out EntityUid? climbable)
+    {
+        climbable = null;
+        foreach (var ent in _turf.GetEntitiesInTile(coords, TileLookup))
+        {
+            if (ent == self)
+                continue;
+
+            if (HasComp<ClimbableComponent>(ent))
+            {
+                climbable = ent;
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>

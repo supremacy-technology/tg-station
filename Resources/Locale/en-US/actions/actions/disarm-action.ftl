@@ -25,3 +25,7 @@ disarm-kick-others = {CAPITALIZE(THE($user))} kicks {THE($target)} onto {POSS-AD
 # Item knocked out of hand - "-target" shown to the person who dropped it.
 disarm-drop-target = You drop {THE($item)}!
 disarm-drop-others = {CAPITALIZE(THE($target))} drops {THE($item)}!
+
+# Shoved onto a table (or other climbable)
+disarm-table-user = You shove {THE($target)} onto the table!
+disarm-table-others = {CAPITALIZE(THE($user))} shoves {THE($target)} onto the table!
