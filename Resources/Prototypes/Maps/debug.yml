@@ -43,6 +43,14 @@
           availableJobs:
             ChiefEngineer: [ -1, -1 ]
 
+# Space variant: no MapAtmosphere / light cycle, so empty tiles behave as vacuum
+# and weightlessness applies wherever no gravity source is present.
+- type: zMap
+  id: EmptySpace
+  maps:
+  - /Maps/Empty.yml
+  - /Maps/Empty.yml
+
 - type: zMap
   id: Empty
   maps:
