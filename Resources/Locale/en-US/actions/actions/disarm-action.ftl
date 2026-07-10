@@ -18,9 +18,13 @@ disarm-shove-others-weapon = {CAPITALIZE(THE($user))} shoves {THE($target)} with
 disarm-knockdown-user = You shove {THE($target)}, knocking {OBJECT($target)} down!
 disarm-knockdown-others = {CAPITALIZE(THE($user))} shoves {THE($target)}, knocking {OBJECT($target)} down!
 
-# Kicked onto their side (stagger finisher)
-disarm-kick-user = You kick {THE($target)} onto {POSS-ADJ($target)} side!
-disarm-kick-others = {CAPITALIZE(THE($user))} kicks {THE($target)} onto {POSS-ADJ($target)} side!
+# Shoved into another person - both go down
+disarm-slam-user = You shove {THE($target)} into {THE($victim)}, knocking them both down!
+disarm-slam-others = {CAPITALIZE(THE($user))} shoves {THE($target)} into {THE($victim)}, knocking them both down!
+
+# Shoved while already knocked down - paralyzed
+disarm-paralyze-user = You kick {THE($target)} while {SUBJECT($target)} is down!
+disarm-paralyze-others = {CAPITALIZE(THE($user))} kicks {THE($target)} while {SUBJECT($target)} is down!
 
 # Item knocked out of hand - "-target" shown to the person who dropped it.
 disarm-drop-target = You drop {THE($item)}!

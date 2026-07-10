@@ -6,6 +6,8 @@ using Content.Shared.Climbing.Systems;
 using Content.Shared.Database;
 using Content.Shared.Hands.EntitySystems;
 using Content.Shared.Maps;
+using Content.Shared.Mobs.Components;
+using Content.Shared.Movement.Systems;
 using Content.Shared.Physics;
 using Content.Shared.Popups;
 using Content.Shared.Standing;
@@ -13,11 +15,13 @@ using Content.Shared.Stunnable;
 using Content.Shared.Tag;
 using Content.Shared.Throwing;
 using Content.Shared.Weapons.Melee.Disarming.Components;
+using Content.Shared.Weapons.Ranged.Components;
 using Robust.Shared.Audio;
 using Robust.Shared.Audio.Systems;
 using Robust.Shared.Map;
 using Robust.Shared.Map.Components;
 using Robust.Shared.Maths;
+using Robust.Shared.Network;
 using Robust.Shared.Player;
 using Robust.Shared.Prototypes;
 using Robust.Shared.Timing;
@@ -25,18 +29,20 @@ using Robust.Shared.Timing;
 namespace Content.Shared.Weapons.Melee.Disarming.Systems;
 
 /// <summary>
-/// SS13-style shove/disarm ("disable"), ported to work with normal SS14 continuous movement.
+/// SS13-style shove/disarm ("disable"), following the tgstation wiki rules, ported to normal SS14
+/// continuous movement. Right-click with an empty hand shoves the target one tile away:
 ///
-/// The target is shoved one tile in the direction the disarmer is facing them (a physics throw, not a
-/// tile-lock step). If the destination tile is solid - a wall or another mob - the shove is "blocked"
-/// and the target is knocked down instead. Repeated shoves stagger, then chain into a knockdown/kick.
-///
-/// This system is deliberately self-contained: it depends only on standard movement/physics
-/// (<see cref="ThrowingSystem"/>, <see cref="TurfSystem"/>) so it works whether or not any tile-locked
-/// movement prototype is present.
+///  - Open tile:            slowed (staggered) for 3s. A second shove while slowed knocks a ranged
+///                          weapon out of their active hand instead.
+///  - Blocking tile = table: pushed onto it and knocked over for 3s.
+///  - Blocking tile = mob:  both fall - the target for 3s, the collateral victim for 1.1s.
+///  - Blocking tile = else: knocked down for 3s.
+///  - Target already down:  paralyzed for 3s (cannot be chained or extended).
+///  - Can't shove someone standing on your own tile.
 /// </summary>
 public sealed class DisarmingSystem : EntitySystem
 {
+    [Dependency] private readonly INetManager _net = default!;
     [Dependency] private readonly IGameTiming _timing = default!;
     [Dependency] private readonly SharedTransformSystem _transform = default!;
     [Dependency] private readonly TagSystem _tag = default!;
@@ -49,6 +55,7 @@ public sealed class DisarmingSystem : EntitySystem
     [Dependency] private readonly ThrowingSystem _throwing = default!;
     [Dependency] private readonly SharedAudioSystem _audio = default!;
     [Dependency] private readonly ClimbSystem _climb = default!;
+    [Dependency] private readonly MovementSpeedModifierSystem _movement = default!;
 
     [Dependency] private readonly EntityQuery<StandingStateComponent> _standingQuery = default!;
     [Dependency] private readonly EntityQuery<BuckleComponent> _buckleQuery = default!;
@@ -59,22 +66,77 @@ public sealed class DisarmingSystem : EntitySystem
     // something they couldn't have walked through".
     private const CollisionGroup ShoveMask = CollisionGroup.MobMask;
     private const float ShoveThrowSpeed = 5f;
+    // How many tiles a successful shove pushes the target (wiki = 1). Tune to taste; the throw still
+    // collides with walls. Table-landing only ever uses the immediately-adjacent tile.
+    private const int ShoveTiles = 1;
     private const LookupFlags TileLookup = LookupFlags.Dynamic | LookupFlags.Static;
 
-    //private static readonly ProtoId<TagPrototype> DisarmDroppableTag = "DisarmDroppable";
+    // "slowed down very slightly" - multiplier applied to walk & sprint speed while staggered.
+    private const float StaggerSpeed = 0.9f;
 
-    // SS13 plays shove.ogg unarmed / glassbash.ogg with a weapon;
+    private static readonly ProtoId<TagPrototype> DisarmDroppableTag = "DisarmDroppable";
+
+    // Wiki plays a shove sound;
     private static readonly SoundSpecifier ShoveSound = new SoundPathSpecifier("/Audio/Weapons/shove.ogg");
 
-    private static readonly TimeSpan StaggerLength = TimeSpan.FromSeconds(3);
-    private static readonly TimeSpan StaggerMax = TimeSpan.FromSeconds(10);
-    private static readonly TimeSpan KnockdownDaze = TimeSpan.FromSeconds(3);
-    private static readonly TimeSpan KickChainParalyze = TimeSpan.FromSeconds(2);
+    private readonly List<EntityUid> _expired = new();
+
+    private static readonly TimeSpan StaggerTime = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan KnockdownTime = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan CollateralKnockdownTime = TimeSpan.FromSeconds(1.1);
+    private static readonly TimeSpan ParalyzeTime = TimeSpan.FromSeconds(3);
+
+    public override void Initialize()
+    {
+        base.Initialize();
+
+        // Staggered = a small movement slowdown that expires on its own.
+        SubscribeLocalEvent<StaggeredComponent, RefreshMovementSpeedModifiersEvent>(OnStaggerRefresh);
+        SubscribeLocalEvent<StaggeredComponent, ComponentStartup>(OnStaggerStartup);
+        SubscribeLocalEvent<StaggeredComponent, ComponentShutdown>(OnStaggerShutdown);
+    }
+
+    public override void Update(float frameTime)
+    {
+        base.Update(frameTime);
+
+        // Expire staggers on the server; removal networks to the client, and the ComponentShutdown
+        // handler refreshes movement speed on both sides.
+        if (!_net.IsServer)
+            return;
+
+        var now = _timing.CurTime;
+        var query = EntityQueryEnumerator<StaggeredComponent>();
+        while (query.MoveNext(out var uid, out var stagger))
+        {
+            if (stagger.StaggeredUntil <= now)
+                _expired.Add(uid);
+        }
+
+        foreach (var uid in _expired)
+            RemComp<StaggeredComponent>(uid);
+        _expired.Clear();
+    }
+
+    private void OnStaggerRefresh(EntityUid uid, StaggeredComponent component, RefreshMovementSpeedModifiersEvent args)
+    {
+        if (component.StaggeredUntil > _timing.CurTime)
+            args.ModifySpeed(StaggerSpeed);
+    }
+
+    private void OnStaggerStartup(EntityUid uid, StaggeredComponent component, ComponentStartup args)
+    {
+        _movement.RefreshMovementSpeedModifiers(uid);
+    }
+
+    private void OnStaggerShutdown(EntityUid uid, StaggeredComponent component, ComponentShutdown args)
+    {
+        _movement.RefreshMovementSpeedModifiers(uid);
+    }
 
     /// <summary>
     /// Universal conditions for a shove: the disarmer is on their feet, isn't shoving themselves, and
     /// isn't standing on the exact same tile as the target (there'd be no direction to shove them).
-    /// Mirrors SS13 can_disarm().
     /// </summary>
     public bool CanDisarm(EntityUid disarmer, EntityUid target)
     {
@@ -95,8 +157,6 @@ public sealed class DisarmingSystem : EntitySystem
         if (!CanDisarm(disarmer, target))
             return;
 
-        var flags = GetShoveFlags(disarmer, target);
-
         var hitEv = new DisarmHitEvent(disarmer, weapon);
         RaiseLocalEvent(target, ref hitEv);
 
@@ -104,11 +164,25 @@ public sealed class DisarmingSystem : EntitySystem
         // predicted sound would be suppressed for the shover; PlayPvs reaches everyone including them).
         _audio.PlayPvs(ShoveSound, target);
 
-        // Shove the target straight away from the disarmer (SS13 get_dir(user, target)). The delta is a
-        // world-space vector, but the tile step below and the tile the target sits on are in the grid's
-        // frame - so rotate the delta into the grid frame before turning it into a Direction. Skipping
-        // this made the push come out 90 degrees off whenever the grid/eye was rotated relative to the
-        // world (which is what "he pushes right when I'm above him" was).
+        // ── Target is already knocked down (any source, incl. slipping) -> paralyze for 3s. This cannot
+        //    be chained or extended, so a shove while already paralyzed/stunned does nothing. ──
+        if (HasComp<KnockedDownComponent>(target))
+        {
+            if (!HasComp<StunnedComponent>(target))
+            {
+                _stun.TryUpdateParalyzeDuration(target, ParalyzeTime);
+                ShovePopup(
+                    Loc.GetString("disarm-paralyze-user", ("target", target)),
+                    Loc.GetString("disarm-paralyze-others", ("user", disarmer), ("target", target)),
+                    target, disarmer);
+                _adminLogger.Add(LogType.MeleeHit, LogImpact.Medium,
+                    $"{ToPrettyString(disarmer):disarmer} paralyzed downed {ToPrettyString(target):target} with a shove");
+            }
+            return;
+        }
+
+        // Direction from the disarmer to the target, rotated into the target's grid frame so the tile
+        // step lines up with what the player sees even on a rotated grid.
         var targetXform = Transform(target);
         var delta = _transform.GetMapCoordinates(target).Position - _transform.GetMapCoordinates(disarmer).Position;
         var gridRot = targetXform.GridUid is { } shoveGrid ? _transform.GetWorldRotation(shoveGrid) : Angle.Zero;
@@ -116,23 +190,26 @@ public sealed class DisarmingSystem : EntitySystem
 
         var targetCoords = targetXform.Coordinates;
 
-        // The tile we'd be shoving them onto (may be null if they're off-grid / at a grid edge).
-        var destTile = GetAdjacentTile(target, shoveDir, out var destCoords);
+        // The tile immediately in the shove direction (may be null off-grid / at a grid edge).
+        var destTile = GetTileAway(target, shoveDir, 1, out var destCoords);
         destCoords ??= targetCoords;
 
-        if ((flags & ShoveFlags.CanMove) != 0)
-        {
-            var preShove = new DisarmPreShoveEvent(disarmer, target);
-            foreach (var occupant in _turf.GetEntitiesInTile(destCoords.Value, TileLookup))
-                RaiseLocalEvent(occupant, ref preShove);
+        var force = CompOrNull<ShoveStatsComponent>(disarmer)?.MoveForce ?? 1f;
+        var resist = CompOrNull<ShoveStatsComponent>(target)?.MoveResist ?? 1f;
+        var canMove = force >= resist;
 
-            // Shoved into a table (or other climbable): end up on top of it instead of being knocked
-            // down against it (SS13 "shove them onto the table"). Only if the target can climb.
-            /*if (!IsBuckled(target)
-                 && HasComp<ClimbingComponent>(target)
-                 && TryGetClimbableAt(destCoords.Value, target, out var climbable))
+        if (canMove && !IsBuckled(target))
+        {
+            // ── Blocking tile has a TABLE -> push them onto it, knocked over for 3s. ──
+            /*if (!IsClimbing(target)
+                && HasComp<ClimbingComponent>(target)
+                && TryGetClimbableAt(destCoords.Value, target, out var climbable))
             {
+                // Snap onto the table tile first so Climb() registers in-place (no multi-tick glide that
+                // the knockdown would cut short), then drop them onto their back on it.
+                _transform.SetCoordinates(target, destCoords.Value);
                 _climb.Climb(target, disarmer, climbable.Value, silent: false);
+                _stun.TryKnockdown(target, KnockdownTime, refresh: true);
                 ShovePopup(
                     Loc.GetString("disarm-table-user", ("target", target)),
                     Loc.GetString("disarm-table-others", ("user", disarmer), ("target", target)),
@@ -142,53 +219,24 @@ public sealed class DisarmingSystem : EntitySystem
                 return;
             }*/
 
-            var blocked = preShove.Solid
-                || (destTile is { } dt && _turf.IsTileBlocked(dt, ShoveMask));
-
-            if (blocked)
+            // ── Blocking tile has ANOTHER MOB -> both fall (target 3s, collateral 1.1s). ──
+            if (TryGetShoveMob(destCoords.Value, target, out var other))
             {
-                flags |= ShoveFlags.Blocked;
-            }
-            else if (!IsBuckled(target))
-            {
-                // Normal continuous-movement shove: throw them a tile back rather than tile-locking.
-                // pushbackRatio 0 so only the target moves - the shover shouldn't recoil like a throw.
-                // A buckled target (sitting in a chair) stays put - don't rip them out of the seat.
-                _throwing.TryThrow(target, destCoords.Value, ShoveThrowSpeed, disarmer,
-                    pushbackRatio: 0f, compensateFriction: true, doSpin: false, playSound: false);
-            }
-        }
-
-        if ((flags & ShoveFlags.Blocked) == 0)
-        {
-            // BreakGrab(target); // only if you have grab-level escalation, downgrade it here
-        }
-
-        if ((flags & ShoveFlags.Blocked) != 0 && IsCardinal(shoveDir)
-            && IsDirectionallyBlocked(targetCoords, destCoords.Value, shoveDir))
-        {
-            flags |= ShoveFlags.DirectionalBlocked;
-        }
-
-        if ((flags & ShoveFlags.CanHitSomething) != 0)
-        {
-            if ((flags & ShoveFlags.DirectionalBlocked) == 0)
-            {
-                var collide = new DisarmCollideEvent(disarmer, target, flags);
-                foreach (var occupant in _turf.GetEntitiesInTile(destCoords.Value, TileLookup))
-                {
-                    RaiseLocalEvent(occupant, ref collide);
-                    if (collide.Handled)
-                        break;
-                }
-                if (collide.Handled)
-                    return; // something else took over - e.g. shoved into another mob
+                _stun.TryKnockdown(target, KnockdownTime, refresh: true);
+                _stun.TryKnockdown(other.Value, CollateralKnockdownTime, refresh: true);
+                ShovePopup(
+                    Loc.GetString("disarm-slam-user", ("target", target), ("victim", other.Value)),
+                    Loc.GetString("disarm-slam-others", ("user", disarmer), ("target", target), ("victim", other.Value)),
+                    target, disarmer);
+                _adminLogger.Add(LogType.MeleeHit, LogImpact.Medium,
+                    $"{ToPrettyString(disarmer):disarmer} shoved {ToPrettyString(target):target} into {ToPrettyString(other.Value):victim}, knocking both down");
+                return;
             }
 
-            if ((flags & ShoveFlags.Blocked) != 0 && (flags & (ShoveFlags.KnockdownBlocked | ShoveFlags.CanKickSide)) == 0)
+            // ── Blocking tile is solid (wall etc) -> knocked down for 3s. ──
+            if (destTile is { } dt && _turf.IsTileBlocked(dt, ShoveMask))
             {
-                _stun.TryKnockdown(target, KnockdownDaze, refresh: true);
-                // recipient (disarmer) sees the "-user" line, everyone else the "-others" line.
+                _stun.TryKnockdown(target, KnockdownTime, refresh: true);
                 ShovePopup(
                     Loc.GetString("disarm-knockdown-user", ("target", target)),
                     Loc.GetString("disarm-knockdown-others", ("user", disarmer), ("target", target)),
@@ -197,106 +245,61 @@ public sealed class DisarmingSystem : EntitySystem
                     $"{ToPrettyString(disarmer):disarmer} shoved {ToPrettyString(target):target} into something solid, knocking them down");
                 return;
             }
+
+            // ── Open tile -> push them one tile. ──
+            GetTileAway(target, shoveDir, ShoveTiles, out var far);
+            _throwing.TryThrow(target, far ?? destCoords.Value, ShoveThrowSpeed, disarmer,
+                pushbackRatio: 0f, compensateFriction: true, doSpin: false, playSound: false);
         }
 
-        // Knockdown only happens when the target is shoved into something solid (a wall or another mob).
-        // The kick finisher is gated on Blocked too, so shoving a staggered target in the open just
-        // pushes/staggers them instead of dropping them - no "shoved by air" fall. A buckled target
-        // (strapped into a chair) is never kicked/knocked down - chairs often sit against a wall, which
-        // would otherwise count as "blocked" and drop them right out of the seat.
-        if ((flags & ShoveFlags.CanKickSide) != 0 && (flags & ShoveFlags.Blocked) != 0 && !IsBuckled(target))
-        {
-            _stun.TryAddParalyzeDuration(target, KickChainParalyze);
-            // Stop the kick chaining forever: further shoves within this window stagger instead.
-            var kicked = EnsureComp<StaggeredComponent>(target);
-            kicked.NoSideKickUntil = _timing.CurTime + KickChainParalyze;
-            Dirty(target, kicked);
+        // ── Open outcome: first shove slows them; a shove while already slowed knocks their ranged
+        //    weapon out of hand instead. ──
+        var wasStaggered = IsStaggered(target);
+        Stagger(target);
 
+        // Wiki: a shove while slowed knocks a *ranged weapon* out of hand. Any GunComponent counts, so
+        // every gun works without tagging; the DisarmDroppable tag covers anything else you want droppable.
+        if (wasStaggered
+            && _hands.TryGetActiveItem(target, out var heldItem)
+            && (HasComp<GunComponent>(heldItem.Value) || _tag.HasTag(heldItem.Value, DisarmDroppableTag)))
+        {
+            _hands.TryDrop(target, heldItem.Value);
             ShovePopup(
-                Loc.GetString("disarm-kick-user", ("target", target)),
-                Loc.GetString("disarm-kick-others", ("user", disarmer), ("target", target)),
-                target, disarmer);
-            _adminLogger.Add(LogType.MeleeHit, LogImpact.Medium,
-                $"{ToPrettyString(disarmer):disarmer} kicked {ToPrettyString(target):target} onto their side");
-            return;
-        }
-
-        // General shove message - weapon variant if a weapon was used (SS13 "[ with weapon]").
-        string shoveUser, shoveOthers;
-        if (weapon is { } shoveWeapon)
-        {
-            shoveUser = Loc.GetString("disarm-shove-user-weapon", ("target", target), ("weapon", shoveWeapon));
-            shoveOthers = Loc.GetString("disarm-shove-others-weapon", ("user", disarmer), ("target", target), ("weapon", shoveWeapon));
+                Loc.GetString("disarm-drop-target", ("item", heldItem.Value)),
+                Loc.GetString("disarm-drop-others", ("target", target), ("item", heldItem.Value)),
+                target, target);
         }
         else
         {
-            shoveUser = Loc.GetString("disarm-shove-user", ("target", target));
-            shoveOthers = Loc.GetString("disarm-shove-others", ("user", disarmer), ("target", target));
-        }
-        ShovePopup(shoveUser, shoveOthers, target, disarmer);
-
-        /*if (_hands.TryGetActiveItem(target, out var heldItem))
-        {
-            var staggeredNow = TryComp<StaggeredComponent>(target, out var s) && s.StaggeredUntil > _timing.CurTime;
-            //var droppable = _tag.HasTag(heldItem.Value, DisarmDroppableTag);
-            var lyingDown = !IsStanding(target);
-
-            if ((staggeredNow && droppable) || lyingDown)
+            string shoveUser, shoveOthers;
+            if (weapon is { } shoveWeapon)
             {
-                _hands.TryDrop(target, heldItem.Value);
-                // recipient (the target, who lost the item) sees "You drop X", others "Y drops X".
-                ShovePopup(
-                    Loc.GetString("disarm-drop-target", ("item", heldItem.Value)),
-                    Loc.GetString("disarm-drop-others", ("target", target), ("item", heldItem.Value)),
-                    target, target);
+                shoveUser = Loc.GetString("disarm-shove-user-weapon", ("target", target), ("weapon", shoveWeapon));
+                shoveOthers = Loc.GetString("disarm-shove-others-weapon", ("user", disarmer), ("target", target), ("weapon", shoveWeapon));
             }
-        }*/
-
-        if ((flags & ShoveFlags.CanStagger) != 0)
-        {
-            var stagger = EnsureComp<StaggeredComponent>(target);
-            var floor = _timing.CurTime + StaggerLength;
-            var cap = _timing.CurTime + StaggerMax;
-            var newUntil = stagger.StaggeredUntil > floor ? stagger.StaggeredUntil : floor;
-            stagger.StaggeredUntil = newUntil > cap ? cap : newUntil;
-            Dirty(target, stagger);
+            else
+            {
+                shoveUser = Loc.GetString("disarm-shove-user", ("target", target));
+                shoveOthers = Loc.GetString("disarm-shove-others", ("user", disarmer), ("target", target));
+            }
+            ShovePopup(shoveUser, shoveOthers, target, disarmer);
         }
 
         _adminLogger.Add(LogType.MeleeHit, LogImpact.Low, $"{ToPrettyString(disarmer):disarmer} shoved {ToPrettyString(target):target}");
     }
 
-    private ShoveFlags GetShoveFlags(EntityUid disarmer, EntityUid target)
+    /// <summary>Applies (or refreshes) the 3-second stagger slowdown.</summary>
+    private void Stagger(EntityUid uid)
     {
-        var flags = ShoveFlags.None;
+        var stagger = EnsureComp<StaggeredComponent>(uid);
+        stagger.StaggeredUntil = _timing.CurTime + StaggerTime;
+        Dirty(uid, stagger);
+        _movement.RefreshMovementSpeedModifiers(uid);
+    }
 
-        var force = CompOrNull<ShoveStatsComponent>(disarmer)?.MoveForce ?? 1f;
-        var resist = CompOrNull<ShoveStatsComponent>(target)?.MoveResist ?? 1f;
-
-        if (force >= resist)
-        {
-            flags |= ShoveFlags.CanMove;
-            if (!IsBuckled(target)) // TODO: your buckle/seat check, if any
-                flags |= ShoveFlags.CanHitSomething;
-        }
-
-        // TODO: your equivalent of TRAIT_BRAWLING_KNOCKDOWN_BLOCKED
-        // if (HasComp<KnockdownImmuneComponent>(target)) flags |= ShoveFlags.KnockdownBlocked;
-
-        // In tgstation CanKickSide/CanStagger come from a /mob/living/carbon override keyed on the
-        // target's existing stagger. Reconstructed: already staggered (and not in the post-kick cooldown)
-        // -> this shove chains into the kick; otherwise it starts/refreshes the stagger clock.
-        if (TryComp<StaggeredComponent>(target, out var staggered)
-            && staggered.StaggeredUntil > _timing.CurTime
-            && staggered.NoSideKickUntil <= _timing.CurTime)
-        {
-            flags |= ShoveFlags.CanKickSide;
-        }
-        else
-        {
-            flags |= ShoveFlags.CanStagger;
-        }
-
-        return flags;
+    private bool IsStaggered(EntityUid uid)
+    {
+        return TryComp<StaggeredComponent>(uid, out var stagger) && stagger.StaggeredUntil > _timing.CurTime;
     }
 
     /// <summary>
@@ -308,18 +311,20 @@ public sealed class DisarmingSystem : EntitySystem
         return !_standingQuery.TryComp(uid, out var standing) || standing.Standing;
     }
 
-    /// <summary>
-    /// Whether the entity is currently buckled/seated (and so shouldn't be shoved into anything).
-    /// </summary>
     private bool IsBuckled(EntityUid uid)
     {
         return _buckleQuery.TryComp(uid, out var buckle) && buckle.Buckled;
     }
 
+    /// <summary>Whether the entity is currently up on a table/climbable.</summary>
+    private bool IsClimbing(EntityUid uid)
+    {
+        return TryComp<ClimbingComponent>(uid, out var climbing) && climbing.IsClimbing;
+    }
+
     /// <summary>
-    /// SS13 visible_message/to_chat split: <paramref name="recipient"/> sees their own line, everyone
-    /// else in PVS sees the third-person line. Uses server popups (not PopupPredicted) because TryDisarm
-    /// only runs server-side - a predicted popup would be suppressed for the shover's own client.
+    /// visible_message/to_chat split: <paramref name="recipient"/> sees their own line, everyone else in
+    /// PVS sees the third-person line. Server popups (not PopupPredicted) because TryDisarm is server-only.
     /// </summary>
     private void ShovePopup(string recipientMessage, string othersMessage, EntityUid uid, EntityUid recipient)
     {
@@ -327,10 +332,7 @@ public sealed class DisarmingSystem : EntitySystem
         _popup.PopupEntity(othersMessage, uid, Filter.PvsExcept(recipient, entityManager: EntityManager), true);
     }
 
-    /// <summary>
-    /// First climbable entity (table, altar, ...) occupying the destination tile, if any - used to make
-    /// a shove land the target on top of it rather than bounce them off it.
-    /// </summary>
+    /// <summary>First climbable (table, altar, ...) on the tile, if any.</summary>
     private bool TryGetClimbableAt(EntityCoordinates coords, EntityUid self, [NotNullWhen(true)] out EntityUid? climbable)
     {
         climbable = null;
@@ -349,9 +351,27 @@ public sealed class DisarmingSystem : EntitySystem
         return false;
     }
 
+    /// <summary>First standing mob (other than <paramref name="self"/>) on the tile - the collateral victim.</summary>
+    private bool TryGetShoveMob(EntityCoordinates coords, EntityUid self, [NotNullWhen(true)] out EntityUid? mob)
+    {
+        mob = null;
+        foreach (var ent in _turf.GetEntitiesInTile(coords, TileLookup))
+        {
+            if (ent == self)
+                continue;
+
+            if (HasComp<MobStateComponent>(ent) && IsStanding(ent))
+            {
+                mob = ent;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /// <summary>
-    /// Grid + tile the entity currently occupies, or null if it isn't on a grid (open space). Used only
-    /// for the "same tile" guard in <see cref="CanDisarm"/>.
+    /// Grid + tile the entity occupies, or null if off-grid. Used only for the "same tile" guard.
     /// </summary>
     private (EntityUid Grid, Vector2i Indices)? GetTile(EntityUid uid)
     {
@@ -366,11 +386,11 @@ public sealed class DisarmingSystem : EntitySystem
     }
 
     /// <summary>
-    /// The tile one step over from <paramref name="uid"/> in <paramref name="dir"/>, plus its centre
-    /// coordinates. Returns null (and null centre) if the entity isn't on a grid, or the destination has
-    /// no tile (grid edge / space).
+    /// The tile <paramref name="tiles"/> steps over from <paramref name="uid"/> in <paramref name="dir"/>,
+    /// plus its centre coordinates. <paramref name="center"/> is set whenever the entity is on a grid;
+    /// the returned <see cref="TileRef"/> is null if there is no tile there (grid edge / space).
     /// </summary>
-    private TileRef? GetAdjacentTile(EntityUid uid, Direction dir, out EntityCoordinates? center)
+    private TileRef? GetTileAway(EntityUid uid, Direction dir, int tiles, out EntityCoordinates? center)
     {
         center = null;
 
@@ -381,28 +401,11 @@ public sealed class DisarmingSystem : EntitySystem
             return null;
         }
 
-        var indices = _map.TileIndicesFor(gridUid, grid, xform.Coordinates) + DirToOffset(dir);
+        var indices = _map.TileIndicesFor(gridUid, grid, xform.Coordinates) + DirToOffset(dir) * tiles;
         center = _map.ToCenterCoordinates(gridUid, indices, grid);
 
         return _map.TryGetTileRef(gridUid, grid, indices, out var tileRef) ? tileRef : null;
     }
-
-    private bool IsDirectionallyBlocked(EntityCoordinates fromTile, EntityCoordinates toTile, Direction shoveDir)
-    {
-        foreach (var ent in _turf.GetEntitiesInTile(fromTile, TileLookup))
-            if (TryComp<DirectionalBlockerComponent>(ent, out var b) && b.BlocksFrom == shoveDir)
-                return true;
-
-        if (!fromTile.Equals(toTile))
-            foreach (var ent in _turf.GetEntitiesInTile(toTile, TileLookup))
-                if (TryComp<DirectionalBlockerComponent>(ent, out var b) && b.BlocksFrom == shoveDir.GetOpposite())
-                    return true;
-
-        return false;
-    }
-
-    private static bool IsCardinal(Direction dir) =>
-        dir is Direction.North or Direction.South or Direction.East or Direction.West;
 
     private static Vector2i DirToOffset(Direction dir) => dir switch
     {
