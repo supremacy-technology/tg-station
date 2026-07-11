@@ -11,32 +11,32 @@ using Content.Shared.ZLevels.Core.EntitySystems;
 using Robust.Shared.Map;
 using Robust.Shared.Map.Components;
 
-namespace Content.Server.ZLevels.Power;
+namespace Content.Server.ZLevels.Risers;
 
 /// <summary>
-/// Support system for <see cref="ZCableRiserNode"/>: refloods riser nodes when z-network
-/// membership changes (nodes group before maps get linked, and the node graph has no idea
-/// the linkage happened), and reports vertical link status on examine.
+/// Support system for <see cref="IZRiserNode"/>s (power and pipe risers): refloods riser
+/// nodes when z-network membership changes (nodes group before maps get linked, and the
+/// node graph has no idea the linkage happened), and reports vertical link status on examine.
 /// </summary>
-public sealed class ZCableRiserSystem : EntitySystem
+public sealed class ZRiserSystem : EntitySystem
 {
     [Dependency] private readonly NodeGroupSystem _nodeGroup = default!;
     [Dependency] private readonly SharedZLevelsSystem _zLevels = default!;
     [Dependency] private readonly SharedMapSystem _map = default!;
     [Dependency] private readonly SharedTransformSystem _transform = default!;
 
-    private EntityQuery<ZCableRiserComponent> _riserQuery;
+    private EntityQuery<ZRiserComponent> _riserQuery;
     private EntityQuery<MapGridComponent> _gridQuery;
 
     public override void Initialize()
     {
         base.Initialize();
 
-        _riserQuery = GetEntityQuery<ZCableRiserComponent>();
+        _riserQuery = GetEntityQuery<ZRiserComponent>();
         _gridQuery = GetEntityQuery<MapGridComponent>();
 
         SubscribeLocalEvent<ZLevelNetworkUpdatedEvent>(OnNetworkUpdated);
-        SubscribeLocalEvent<ZCableRiserComponent, ExaminedEvent>(OnExamined);
+        SubscribeLocalEvent<ZRiserComponent, ExaminedEvent>(OnExamined);
     }
 
     private void OnNetworkUpdated(ZLevelNetworkUpdatedEvent args)
@@ -48,7 +48,7 @@ public sealed class ZCableRiserSystem : EntitySystem
                 networkMaps.Add(netMap.Value);
         }
 
-        var query = EntityQueryEnumerator<ZCableRiserComponent, NodeContainerComponent, TransformComponent>();
+        var query = EntityQueryEnumerator<ZRiserComponent, NodeContainerComponent, TransformComponent>();
         while (query.MoveNext(out _, out _, out var container, out var xform))
         {
             if (xform.MapUid is not { } mapUid || !networkMaps.Contains(mapUid))
@@ -56,23 +56,23 @@ public sealed class ZCableRiserSystem : EntitySystem
 
             foreach (var node in container.Nodes.Values)
             {
-                if (node is ZCableRiserNode)
+                if (node is IZRiserNode)
                     _nodeGroup.QueueReflood(node);
             }
         }
     }
 
-    private void OnExamined(Entity<ZCableRiserComponent> ent, ref ExaminedEvent args)
+    private void OnExamined(Entity<ZRiserComponent> ent, ref ExaminedEvent args)
     {
         var above = HasRiserOnOffsetMap(ent, 1);
         var below = HasRiserOnOffsetMap(ent, -1);
 
         args.PushMarkup(Loc.GetString(above
-            ? "zlevel-power-riser-linked-above"
-            : "zlevel-power-riser-unlinked-above"));
+            ? "zlevel-riser-linked-above"
+            : "zlevel-riser-unlinked-above"));
         args.PushMarkup(Loc.GetString(below
-            ? "zlevel-power-riser-linked-below"
-            : "zlevel-power-riser-unlinked-below"));
+            ? "zlevel-riser-linked-below"
+            : "zlevel-riser-unlinked-below"));
     }
 
     private bool HasRiserOnOffsetMap(EntityUid riser, int offset)

@@ -70,7 +70,14 @@ public sealed partial class AtmosPipeAppearanceSystem : SharedAtmosPipeAppearanc
             if (pipeIndex >= numberOfPipeLayers)
                 continue;
 
-            var otherTile = _map.TileIndicesFor(xform.GridUid.Value, grid, Transform(neighbour).Coordinates);
+            var neighbourXform = Transform(neighbour);
+
+            // Nodes reached across z-levels (pipe risers) sit on a different grid: they have
+            // no cardinal direction here, and TileIndicesFor asserts on foreign coordinates.
+            if (neighbourXform.GridUid != xform.GridUid)
+                continue;
+
+            var otherTile = _map.TileIndicesFor(xform.GridUid.Value, grid, neighbourXform.Coordinates);
             var pipeLayerDirections = connectedDirections[pipeIndex];
 
             pipeLayerDirections |= (otherTile - tile) switch

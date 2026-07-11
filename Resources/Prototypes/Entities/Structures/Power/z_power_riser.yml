@@ -17,7 +17,7 @@
       riser:
         !type:ZCableRiserNode
         nodeGroupID: HVPower
-  - type: ZCableRiser
+  - type: ZRiser
   - type: Damageable
     damageContainer: StructuralInorganic
     damageModifierSet: Metallic

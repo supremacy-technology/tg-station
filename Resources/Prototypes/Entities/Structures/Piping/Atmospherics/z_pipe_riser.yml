@@ -1,0 +1,20 @@
+- type: entity
+  parent: GasPipeSansLayers
+  id: GasPipeRiser
+  name: gas pipe riser
+  description: A vertical pipe section. Merges pipenets with matching risers directly above and below.
+  components:
+  - type: Transform
+    noRot: true
+  - type: NodeContainer
+    nodes:
+      pipe:
+        !type:ZPipeRiserNode
+        nodeGroupID: Pipe
+        pipeDirection: Fourway
+  - type: Sprite
+    sprite: Structures/Piping/Atmospherics/z_pipe_riser.rsi
+    layers:
+    - state: riser
+      map: [ "enum.PipeVisualLayers.Pipe" ]
+  - type: ZRiser
