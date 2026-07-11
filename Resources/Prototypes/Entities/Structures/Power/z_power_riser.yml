@@ -1,0 +1,36 @@
+- type: entity
+  id: PowerRiserHV
+  parent: BaseFloorDecoration
+  name: HV power riser
+  description: A superconducting vertical cable hub. Merges high-voltage power networks with matching risers directly above and below.
+  components:
+  - type: Anchorable
+    flags:
+    - Anchorable
+  - type: Sprite
+    sprite: Structures/Power/z_power_riser.rsi
+    state: riser
+    drawdepth: FloorObjects
+  - type: NodeContainer
+    examinable: true
+    nodes:
+      riser:
+        !type:ZCableRiserNode
+        nodeGroupID: HVPower
+  - type: ZCableRiser
+  - type: Damageable
+    damageContainer: StructuralInorganic
+    damageModifierSet: Metallic
+  - type: Destructible
+    thresholds:
+    - trigger:
+        !type:DamageTrigger
+        damage: 100
+      behaviors:
+      - !type:SpawnEntitiesBehavior
+        spawn:
+          CableHVStack1:
+            min: 1
+            max: 2
+      - !type:DoActsBehavior
+        acts: [ "Destruction" ]
