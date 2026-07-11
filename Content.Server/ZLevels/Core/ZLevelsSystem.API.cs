@@ -103,7 +103,7 @@ public sealed partial class ZLevelsSystem
                 success = false;
         }
 
-        RaiseLocalEvent(network, new ZLevelNetworkUpdatedEvent());
+        RaiseLocalEvent(network, new ZLevelNetworkUpdatedEvent(network), broadcast: true);
 
         return success;
     }
@@ -148,9 +148,12 @@ public sealed partial class ZLevelsSystem
 }
 
 /// <summary>
-/// Called on ZLevel Network Entity, when maps added or removed from network
+/// Called on ZLevel Network Entity (directed and broadcast), when maps added or removed from network
 /// </summary>
-public sealed class ZLevelNetworkUpdatedEvent : EntityEventArgs;
+public sealed class ZLevelNetworkUpdatedEvent(Entity<ZLevelsNetworkComponent> network) : EntityEventArgs
+{
+    public Entity<ZLevelsNetworkComponent> Network = network;
+}
 
 /// <summary>
 /// Called on map, when it added to ZNetwork

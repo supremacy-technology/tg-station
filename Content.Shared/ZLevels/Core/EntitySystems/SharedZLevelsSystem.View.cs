@@ -13,7 +13,7 @@ namespace Content.Shared.ZLevels.Core.EntitySystems;
 public abstract partial class SharedZLevelsSystem
 {
     public const int MaxZLevelsBelowRendering = 2;
-    public const int MaxZLevelsAboveRendering = 0;
+    public const int MaxZLevelsAboveRendering = 1;
 
     [Dependency] protected readonly ITileDefinitionManager TilDefMan = default!;
     private void InitView()

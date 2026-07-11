@@ -1,0 +1,33 @@
+- type: entity
+  id: Ladder
+  parent: BaseFloorDecoration
+  name: ladder
+  description: A sturdy metal ladder. For getting to the level above without the luxury of stairs.
+  components:
+  - type: Anchorable
+    flags:
+    - Anchorable
+  - type: Rotatable
+  - type: Sprite
+    sprite: Structures/ladder.rsi
+    state: ladder
+    drawdepth: FloorObjects
+  - type: ZLevelHighGround
+    heightCurve: [ 0.0, 0.2, 1.05 ]
+    stick: true
+  - type: Damageable
+    damageContainer: StructuralInorganic
+    damageModifierSet: Metallic
+  - type: Destructible
+    thresholds:
+    - trigger:
+        !type:DamageTrigger
+        damage: 100
+      behaviors:
+      - !type:SpawnEntitiesBehavior
+        spawn:
+          PartRodMetal1:
+            min: 1
+            max: 2
+      - !type:DoActsBehavior
+        acts: [ "Destruction" ]

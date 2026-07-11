@@ -21,6 +21,9 @@
     flags:
     - Anchorable
   - type: Rotatable
+  - type: ZLevelHighGround
+    heightCurve: [ 0.0, 1.05 ]
+    stick: true
   - type: Sprite
     sprite: Structures/stairs.rsi
     state: stairs_steel
@@ -52,6 +55,9 @@
   parent: Stairs
   suffix: Steel, stage
   components:
+  - type: ZLevelHighGround
+    heightCurve: [ 1.05, 1.05 ]
+    stick: true
   - type: Sprite
     sprite: Structures/stairs.rsi
     state: stairs_stage_steel
@@ -72,6 +78,9 @@
   parent: Stairs
   suffix: White, stage
   components:
+  - type: ZLevelHighGround
+    heightCurve: [ 1.05, 1.05 ]
+    stick: true
   - type: Sprite
     sprite: Structures/stairs.rsi
     state: stairs_stage_white
@@ -92,6 +101,9 @@
   parent: Stairs
   suffix: Dark, stage
   components:
+  - type: ZLevelHighGround
+    heightCurve: [ 1.05, 1.05 ]
+    stick: true
   - type: Sprite
     sprite: Structures/stairs.rsi
     state: stairs_stage_dark
@@ -112,6 +124,9 @@
   parent: Stairs
   suffix: Wood, stage
   components:
+  - type: ZLevelHighGround
+    heightCurve: [ 1.05, 1.05 ]
+    stick: true
   - type: Sprite
     sprite: Structures/stairs.rsi
     state: stairs_stage_wood

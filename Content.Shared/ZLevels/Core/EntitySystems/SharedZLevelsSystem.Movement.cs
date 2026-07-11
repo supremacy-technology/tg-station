@@ -6,6 +6,7 @@
 using System.Numerics;
 using Content.Shared.ZLevels.Core.Components;
 using Content.Shared.Chasm;
+using Content.Shared.Gravity;
 using Content.Shared.Inventory;
 using Content.Shared.Throwing;
 using JetBrains.Annotations;
@@ -26,11 +27,15 @@ public abstract partial class SharedZLevelsSystem
     /// </summary>
     private const float ImpactVelocityLimit = 3f;
 
+    [Dependency] private readonly SharedGravitySystem _gravity = default!;
+
     private EntityQuery<ZLevelHighGroundComponent> _highgroundQuery;
+    private EntityQuery<GravityAffectedComponent> _gravityAffectedQuery;
 
     private void InitMovement()
     {
         _highgroundQuery = GetEntityQuery<ZLevelHighGroundComponent>();
+        _gravityAffectedQuery = GetEntityQuery<GravityAffectedComponent>();
 
         SubscribeLocalEvent<ZPhysicsComponent, GetZVelocityEvent>(OnGetVelocity);
         SubscribeLocalEvent<ZPhysicsComponent, ZLevelMapMoveEvent>(OnZLevelMapMove);
@@ -94,7 +99,24 @@ public abstract partial class SharedZLevelsSystem
 
     private void OnGetVelocity(Entity<ZPhysicsComponent> ent, ref GetZVelocityEvent args)
     {
+        // Weightless entities aren't pulled down through open space: no gravity, no z-fall.
+        if (!HasZGravity(ent.Owner))
+            return;
+
         args.VelocityDelta -= ZGravityForce * ent.Comp.GravityMultiplier;
+    }
+
+    /// <summary>
+    /// Whether anything pulls this entity downwards. Entities that track weightlessness follow it
+    /// (this includes overrides like magboots, which simulate gravity and thus keep z-falling);
+    /// everything else follows raw grid/map gravity.
+    /// </summary>
+    private bool HasZGravity(EntityUid uid)
+    {
+        if (_gravityAffectedQuery.TryComp(uid, out var affected))
+            return !affected.Weightless;
+
+        return _gravity.EntityGridOrMapHaveGravity(uid);
     }
 
     public override void Update(float frameTime)
@@ -144,7 +166,9 @@ public abstract partial class SharedZLevelsSystem
                         RaiseLocalEvent(uid, ref land);
                     }
 
-                    zPhys.Velocity = -zPhys.Velocity * zPhys.Bounciness;
+                    // In weightlessness impacts just stop the entity: with no gravity to bring
+                    // it back down, a bounce would send it drifting upwards forever.
+                    zPhys.Velocity = HasZGravity(uid) ? -zPhys.Velocity * zPhys.Bounciness : 0f;
                 }
             }
 
@@ -159,6 +183,14 @@ public abstract partial class SharedZLevelsSystem
                         var fallEv = new ZLevelFallMapEvent();
                         RaiseLocalEvent(uid, ref fallEv);
                     }
+                }
+                else
+                {
+                    //Bottom of the stack: nothing to fall into
+                    zPhys.LocalPosition = 0;
+
+                    if (zPhys.Velocity < 0)
+                        zPhys.Velocity = 0;
                 }
             }
 
@@ -175,12 +207,22 @@ public abstract partial class SharedZLevelsSystem
                     }
 
                     zPhys.LocalPosition = 1;
-                    zPhys.Velocity = -zPhys.Velocity * zPhys.Bounciness;
+                    zPhys.Velocity = HasZGravity(uid) ? -zPhys.Velocity * zPhys.Bounciness : 0f;
                 }
                 else //Move up
                 {
                     if (TryMoveUp(uid))
+                    {
                         zPhys.LocalPosition -= 1;
+                    }
+                    else
+                    {
+                        //Top of the stack: nothing to rise into
+                        zPhys.LocalPosition = 1;
+
+                        if (zPhys.Velocity > 0)
+                            zPhys.Velocity = 0;
+                    }
                 }
             }
 

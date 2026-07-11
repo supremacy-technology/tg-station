@@ -1191,6 +1191,7 @@
   parent: BaseStationTile
   name: tiles-glass-floor
   sprite: /Textures/Tiles/glass.png
+  transparent: true
   variants: 4
   placementVariants:
   - 1.0
@@ -1206,6 +1207,7 @@
   parent: BaseStationTile
   name: tiles-reinforced-glass-floor
   sprite: /Textures/Tiles/rglass.png
+  transparent: true
   variants: 4
   placementVariants:
   - 1.0

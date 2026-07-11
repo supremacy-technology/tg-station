@@ -38,10 +38,17 @@ public sealed partial class ZLevelsSystem : SharedZLevelsSystem
         ent.Comp.ZNetworkEntity = stationNetwork;
         _meta.SetEntityName(ent.Comp.ZNetworkEntity.Value, $"Station z-Network: {stationName}");
 
-        var mainMap =  _station.GetLargestGrid(ent.Owner);
+        var mainGrid = _station.GetLargestGrid(ent.Owner);
+
+        if (mainGrid is null)
+            throw new Exception("Station has no grids to base z-levels off of!");
+
+        // The network keys off map entities, not grids: every lookup in SharedZLevelsSystem
+        // resolves through Transform(ent).MapUid.
+        var mainMap = Transform(mainGrid.Value).MapUid;
 
         if (mainMap is null)
-            throw new Exception("Station has no grids to base z-levels off of!");
+            throw new Exception("Station's largest grid is not on a map!");
 
         Dictionary<EntityUid, int> dict = new();
         dict.Add(mainMap.Value, 0);
