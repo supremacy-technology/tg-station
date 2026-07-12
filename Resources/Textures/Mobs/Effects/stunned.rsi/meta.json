@@ -5,13 +5,13 @@
         "y": 32
     },
     "license": "CC-BY-SA-3.0",
-    "copyright": "Created by Princess Cheeseballs, https://github.com/Princess-Cheeseballs",
+    "copyright": "Taken from tgstation",
     "states": [
         {
             "name": "stunned",
             "directions": 1,
             "delays": [
-                [ 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1 ]
+                [ 0.1, 0.1, 0.1, 0.1, 0.1 ]
             ]
         }
     ]

@@ -305,7 +305,8 @@ public abstract partial class SharedStunSystem
             DamageThreshold = 5,
             CancelDuplicate = true,
             RequireCanInteract = false,
-            BreakOnHandChange = true
+            BreakOnHandChange = true,
+            Hidden = true // Only the person standing up sees the progress bar, not everyone around them.
         };
 
         // If we try standing don't try standing again

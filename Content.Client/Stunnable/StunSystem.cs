@@ -55,7 +55,6 @@ public sealed class StunSystem : SharedStunSystem
 
         _spriteSystem.LayerMapReserve(spriteEntity, StunVisualLayers.StamCrit);
         _spriteSystem.LayerSetVisible(spriteEntity, StunVisualLayers.StamCrit, false);
-        _spriteSystem.LayerSetOffset(spriteEntity, StunVisualLayers.StamCrit, new Vector2(0, 0.3125f));
 
         _spriteSystem.LayerSetRsi(spriteEntity, StunVisualLayers.StamCrit, entity.Comp.StarsPath);
 
