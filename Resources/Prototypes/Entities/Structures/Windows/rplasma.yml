@@ -5,9 +5,10 @@
   components:
   - type: Sprite
     drawdepth: WallTops
-    sprite: Structures/Windows/reinforced_plasma_window.rsi
+    sprite: Structures/Windows/reinforced_window.rsi
+    color: "#F14EFFAA" # plasma tint over the greyscale glass sprites
   - type: Icon
-    sprite: Structures/Windows/reinforced_plasma_window.rsi
+    sprite: Structures/Windows/reinforced_window.rsi
   - type: Damageable
     damageContainer: StructuralInorganic
     damageModifierSet: RGlass
@@ -42,7 +43,7 @@
       - !type:DoActsBehavior
         acts: [ "Destruction" ]
   - type: IconSmooth
-    base: rpwindow
+    base: rwindow
   - type: Construction
     graph: Window
     node: reinforcedPlasmaWindow
@@ -68,10 +69,11 @@
   components:
   - type: Sprite
     sprite: Structures/Windows/directional.rsi
-    state: plasma_reinforced_window
+    state: reinforced_window
+    color: "#F14EFFAA"
   - type: Icon
     sprite: Structures/Windows/directional.rsi
-    state: plasma_reinforced_window
+    state: reinforced_window
   - type: Construction
     graph: WindowDirectional
     node: plasmaReinforcedWindowDirectional
@@ -125,8 +127,9 @@
   components:
   - type: Sprite
     drawdepth: WallTops
-    sprite: Structures/Windows/reinforced_plasma_diagonal.rsi
+    sprite: Structures/Windows/reinforced_window_diagonal.rsi
     state: state0
+    color: "#F14EFFAA"
   - type: Tag
     tags:
     - Diagonal
@@ -136,7 +139,7 @@
     key: windows
     base: state
   - type: Icon
-    sprite: Structures/Windows/reinforced_plasma_diagonal.rsi
+    sprite: Structures/Windows/reinforced_window_diagonal.rsi
     state: state0
   - type: Fixtures
     fixtures:

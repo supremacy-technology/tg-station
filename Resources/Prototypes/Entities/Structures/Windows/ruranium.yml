@@ -5,9 +5,10 @@
   components:
   - type: Sprite
     drawdepth: WallTops
-    sprite: Structures/Windows/reinforced_uranium_window.rsi
+    sprite: Structures/Windows/reinforced_window.rsi
+    color: "#3BF06B" # uranium tint over the greyscale glass sprites
   - type: Icon
-    sprite: Structures/Windows/reinforced_uranium_window.rsi
+    sprite: Structures/Windows/reinforced_window.rsi
   - type: Damageable
     damageContainer: StructuralInorganic
     damageModifierSet: RGlass
@@ -37,7 +38,7 @@
       - !type:DoActsBehavior
         acts: [ "Destruction" ]
   - type: IconSmooth
-    base: ruwindow
+    base: rwindow
   - type: Construction
     graph: Window
     node: reinforcedUraniumWindow
@@ -65,10 +66,11 @@
   components:
   - type: Sprite
     sprite: Structures/Windows/directional.rsi
-    state: uranium_reinforced_window
+    state: reinforced_window
+    color: "#3BF06B"
   - type: Icon
     sprite: Structures/Windows/directional.rsi
-    state: uranium_reinforced_window
+    state: reinforced_window
   - type: Construction
     graph: WindowDirectional
     node: uraniumReinforcedWindowDirectional
@@ -122,8 +124,9 @@
   components:
   - type: Sprite
     drawdepth: WallTops
-    sprite: Structures/Windows/reinforced_uranium_diagonal.rsi
+    sprite: Structures/Windows/reinforced_window_diagonal.rsi
     state: state0
+    color: "#3BF06B"
   - type: Tag
     tags:
     - Diagonal
@@ -133,7 +136,7 @@
     key: windows
     base: state
   - type: Icon
-    sprite: Structures/Windows/reinforced_uranium_diagonal.rsi
+    sprite: Structures/Windows/reinforced_window_diagonal.rsi
     state: state0
   - type: Fixtures
     fixtures:

@@ -6,6 +6,7 @@
   - type: Sprite
     drawdepth: WallTops
     sprite: Structures/Windows/reinforced_window.rsi
+    color: "#90C1E1"
   - type: Icon
     sprite: Structures/Windows/reinforced_window.rsi
   - type: Repairable
@@ -69,6 +70,7 @@
   - type: Sprite
     sprite: Structures/Windows/directional.rsi
     state: reinforced_window
+    color: "#90C1E1"
   - type: Icon
     sprite: Structures/Windows/directional.rsi
     state: reinforced_window
@@ -129,6 +131,7 @@
     drawdepth: WallTops
     sprite: Structures/Windows/reinforced_window_diagonal.rsi
     state: state0
+    color: "#90C1E1"
   - type: Tag
     tags:
     - Diagonal

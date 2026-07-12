@@ -6,6 +6,7 @@
   - type: Sprite
     drawdepth: WallTops
     sprite: Structures/Windows/mining.rsi
+    color: "#FFFFFF" # own pre-colored art, don't inherit the glass tint
   - type: Icon
     sprite: Structures/Windows/mining.rsi
   - type: Repairable

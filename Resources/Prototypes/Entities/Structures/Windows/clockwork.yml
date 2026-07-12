@@ -7,6 +7,7 @@
   - type: Sprite
     drawdepth: WallTops
     sprite: Structures/Windows/clockwork_window.rsi
+    color: "#FFFFFF" # own pre-colored art, don't inherit the glass tint
   - type: Icon
     sprite: Structures/Windows/clockwork_window.rsi
   - type: Repairable
@@ -66,6 +67,7 @@
   - type: Sprite
     sprite: Structures/Windows/directional.rsi
     state: clock_window
+    color: "#FFFFFF" # own pre-colored art, don't inherit the glass tint
   - type: Icon
     sprite: Structures/Windows/directional.rsi
     state: clock_window

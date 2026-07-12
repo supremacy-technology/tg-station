@@ -25,6 +25,7 @@
   - type: Sprite
     drawdepth: WallTops
     sprite: Structures/Windows/window.rsi
+    color: "#99BBFF" # base window sprites are greyscale; every window variant paints them via color
   - type: Icon
     sprite: Structures/Windows/window.rsi
     state: full
@@ -105,6 +106,7 @@
   - type: Sprite
     drawdepth: WallTops
     sprite: Structures/Windows/tinted_window.rsi
+    color: "#FFFFFF" # own pre-colored art, don't inherit the glass tint
   - type: Icon
     sprite: Structures/Windows/tinted_window.rsi
   - type: IconSmooth
@@ -147,6 +149,7 @@
     drawdepth: Mobs
     sprite: Structures/Windows/directional.rsi
     state: window
+    color: "#87BDDE"
   - type: Icon
     sprite: Structures/Windows/directional.rsi
     state: window
@@ -239,6 +242,7 @@
   - type: Sprite
     sprite: Structures/Windows/directional.rsi
     state: frosted_window
+    color: "#FFFFFF" # own pre-colored art, don't inherit the glass tint
   - type: Icon
     sprite: Structures/Windows/directional.rsi
     state: frosted_window
@@ -258,6 +262,7 @@
     drawdepth: WallTops
     sprite: Structures/Windows/window_diagonal.rsi
     state: state0
+    color: "#87BDDE"
   - type: Tag
     tags:
     - Diagonal
