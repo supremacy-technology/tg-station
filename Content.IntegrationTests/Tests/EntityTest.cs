@@ -248,6 +248,15 @@ namespace Content.IntegrationTests.Tests
                 "AnnounceOnSpawn",
             };
 
+            // Debug max-cap bombs: their payloads detonate within the first ticks after
+            // spawning, rupturing into wreck entities and explosion effects that this
+            // test's entity-count bookkeeping cannot tolerate.
+            var excludedPrototypes = new[]
+            {
+                "MaxCapBluespace",
+                "MaxCapCanister",
+            };
+
             Assert.That(server.CfgMan.GetCVar(CVars.NetPVS), Is.False);
 
             var protoIds = server.ProtoMan
@@ -255,6 +264,7 @@ namespace Content.IntegrationTests.Tests
                 .Where(p => !p.Abstract)
                 .Where(p => !pair.IsTestPrototype(p))
                 .Where(p => !excluded.Any(p.Components.ContainsKey))
+                .Where(p => !excludedPrototypes.Contains(p.ID))
                 .Where(p => p.Categories.All(x => x.ID != SpawnerCategory))
                 .Select(p => p.ID)
                 .ToList();

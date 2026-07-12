@@ -164082,44 +164082,6 @@ entities:
       rot: -1.5707963267948966 rad
       pos: 48.5,-11.5
       parent: 2
-- proto: ReinforcedUraniumWindow
-  entities:
-  - uid: 13028
-    components:
-    - type: Transform
-      rot: 3.141592653589793 rad
-      pos: 60.5,22.5
-      parent: 2
-  - uid: 13038
-    components:
-    - type: Transform
-      rot: 3.141592653589793 rad
-      pos: 58.5,22.5
-      parent: 2
-  - uid: 13039
-    components:
-    - type: Transform
-      rot: 3.141592653589793 rad
-      pos: 52.5,22.5
-      parent: 2
-  - uid: 13040
-    components:
-    - type: Transform
-      rot: 3.141592653589793 rad
-      pos: 61.5,22.5
-      parent: 2
-  - uid: 13060
-    components:
-    - type: Transform
-      rot: 3.141592653589793 rad
-      pos: 49.5,22.5
-      parent: 2
-  - uid: 24380
-    components:
-    - type: Transform
-      rot: 3.141592653589793 rad
-      pos: 50.5,22.5
-      parent: 2
 - proto: ReinforcedWindow
   entities:
   - uid: 127

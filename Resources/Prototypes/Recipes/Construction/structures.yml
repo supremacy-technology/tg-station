@@ -410,34 +410,6 @@
   placementMode: SnapgridCenter
 
 - type: construction
-  id: UraniumWindow
-  graph: Window
-  startNode: start
-  targetNode: uraniumWindow
-  category: construction-category-structures
-  canBuildInImpassable: true
-  conditions:
-    - !type:EmptyOrWindowValidInTile
-    - !type:NoWindowsInTile
-  objectType: Structure
-  placementMode: SnapgridCenter
-  canRotate: false
-
-- type: construction
-  id: ReinforcedUraniumWindow
-  graph: Window
-  startNode: start
-  targetNode: reinforcedUraniumWindow
-  category: construction-category-structures
-  canBuildInImpassable: true
-  conditions:
-    - !type:EmptyOrWindowValidInTile
-    - !type:NoWindowsInTile
-  objectType: Structure
-  placementMode: SnapgridCenter
-  canRotate: false
-
-- type: construction
   id: Firelock
   graph: Firelock
   startNode: start

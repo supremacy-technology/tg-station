@@ -41,8 +41,6 @@
     <GuideEntityEmbed Entity="PlasmaWindow" Caption=""/>
     <GuideEntityEmbed Entity="PlasmaWindowDirectional" Caption=""/>
     <GuideEntityEmbed Entity="WindoorPlasma" Caption=""/>
-    <GuideEntityEmbed Entity="UraniumWindow" Caption=""/>
-    <GuideEntityEmbed Entity="UraniumWindowDirectional" Caption=""/>
     <GuideEntityEmbed Entity="WindoorUranium" Caption=""/>
   </Box>
 
@@ -56,8 +54,6 @@
     <GuideEntityEmbed Entity="ReinforcedPlasmaWindow" Caption=""/>
     <GuideEntityEmbed Entity="PlasmaReinforcedWindowDirectional" Caption=""/>
     <GuideEntityEmbed Entity="WindoorSecurePlasma" Caption=""/>
-    <GuideEntityEmbed Entity="ReinforcedUraniumWindow" Caption=""/>
-    <GuideEntityEmbed Entity="UraniumReinforcedWindowDirectional" Caption=""/>
     <GuideEntityEmbed Entity="WindoorSecureUranium" Caption=""/>
 
   </Box>
