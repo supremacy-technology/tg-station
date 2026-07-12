@@ -1156,19 +1156,6 @@ entities:
 
 
         if he's dead, burn his body. it was part of his religion, i think.
-- proto: PlasmaWindowDiagonal
-  entities:
-  - uid: 73
-    components:
-    - type: Transform
-      rot: -1.5707963267948966 rad
-      pos: 3.5,2.5
-      parent: 1
-  - uid: 75
-    components:
-    - type: Transform
-      pos: -2.5,2.5
-      parent: 1
 - proto: Poweredlight
   entities:
   - uid: 76

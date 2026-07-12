@@ -147653,46 +147653,6 @@ entities:
       rot: -1.5707963267948966 rad
       pos: 38.5,-63.5
       parent: 2
-- proto: ReinforcedPlasmaWindowDiagonal
-  entities:
-  - uid: 1043
-    components:
-    - type: Transform
-      rot: 1.5707963267948966 rad
-      pos: -21.5,39.5
-      parent: 2
-  - uid: 1054
-    components:
-    - type: Transform
-      pos: -22.5,48.5
-      parent: 2
-  - uid: 3192
-    components:
-    - type: Transform
-      pos: -19.5,51.5
-      parent: 2
-  - uid: 3488
-    components:
-    - type: Transform
-      pos: -23.5,47.5
-      parent: 2
-  - uid: 3490
-    components:
-    - type: Transform
-      pos: -21.5,49.5
-      parent: 2
-  - uid: 11060
-    components:
-    - type: Transform
-      rot: 1.5707963267948966 rad
-      pos: -19.5,37.5
-      parent: 2
-  - uid: 19511
-    components:
-    - type: Transform
-      rot: 1.5707963267948966 rad
-      pos: -23.5,41.5
-      parent: 2
 - proto: ReinforcedWindow
   entities:
   - uid: 1765
@@ -148054,14 +148014,6 @@ entities:
     - type: Transform
       rot: -1.5707963267948966 rad
       pos: -54.5,44.5
-      parent: 2
-- proto: ReinforcedWindowDiagonal
-  entities:
-  - uid: 18675
-    components:
-    - type: Transform
-      rot: 1.5707963267948966 rad
-      pos: -22.5,40.5
       parent: 2
 - proto: RemoteSignaller
   entities:

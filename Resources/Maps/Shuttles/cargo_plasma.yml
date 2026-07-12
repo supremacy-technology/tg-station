@@ -1108,19 +1108,6 @@ entities:
       rot: 1.5707963267948966 rad
       pos: 2.5,8.5
       parent: 1
-- proto: ShuttleWindowDiagonal
-  entities:
-  - uid: 114
-    components:
-    - type: Transform
-      rot: -1.5707963267948966 rad
-      pos: 5.5,8.5
-      parent: 1
-  - uid: 117
-    components:
-    - type: Transform
-      pos: 1.5,8.5
-      parent: 1
 - proto: SignalButtonDirectional
   entities:
   - uid: 148

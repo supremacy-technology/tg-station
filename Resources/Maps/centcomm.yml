@@ -44407,31 +44407,6 @@ entities:
     - type: Transform
       pos: 1.5,33.5
       parent: 1668
-- proto: PlastitaniumWindowDiagonalIndestructible
-  entities:
-  - uid: 376
-    components:
-    - type: Transform
-      rot: -1.5707963267948966 rad
-      pos: 20.5,33.5
-      parent: 1668
-  - uid: 2540
-    components:
-    - type: Transform
-      rot: 1.5707963267948966 rad
-      pos: 18.5,31.5
-      parent: 1668
-  - uid: 2541
-    components:
-    - type: Transform
-      pos: 18.5,33.5
-      parent: 1668
-  - uid: 2543
-    components:
-    - type: Transform
-      rot: 3.141592653589793 rad
-      pos: 20.5,31.5
-      parent: 1668
 - proto: PlastitaniumWindowIndestructible
   entities:
   - uid: 1741
