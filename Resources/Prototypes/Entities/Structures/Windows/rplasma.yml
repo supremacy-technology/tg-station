@@ -6,7 +6,7 @@
   - type: Sprite
     drawdepth: WallTops
     sprite: Structures/Windows/reinforced_window.rsi
-    color: "#F14EFFAA" # plasma tint over the greyscale glass sprites
+    color: "#C800FF" # plasma tint over the greyscale glass sprites
   - type: Icon
     sprite: Structures/Windows/reinforced_window.rsi
   - type: Damageable
@@ -70,7 +70,7 @@
   - type: Sprite
     sprite: Structures/Windows/directional.rsi
     state: reinforced_window
-    color: "#F14EFFAA"
+    color: "#C800FF"
   - type: Icon
     sprite: Structures/Windows/directional.rsi
     state: reinforced_window

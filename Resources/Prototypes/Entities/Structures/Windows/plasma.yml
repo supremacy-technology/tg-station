@@ -6,7 +6,7 @@
   - type: Sprite
     drawdepth: WallTops
     sprite: Structures/Windows/window.rsi
-    color: "#F14EFFAA" # plasma tint over the greyscale glass sprites
+    color: "#C800FF" # plasma tint over the greyscale glass sprites
   - type: Damageable
     damageContainer: StructuralInorganic
     damageModifierSet: Glass
@@ -63,7 +63,7 @@
   - type: Sprite
     sprite: Structures/Windows/directional.rsi
     state: window
-    color: "#F14EFFAA"
+    color: "#C800FF"
   - type: Icon
     sprite: Structures/Windows/directional.rsi
     state: window

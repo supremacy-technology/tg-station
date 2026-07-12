@@ -106,7 +106,7 @@
   - type: Sprite
     drawdepth: WallTops
     sprite: Structures/Windows/tinted_window.rsi
-    color: "#FFFFFF" # own pre-colored art, don't inherit the glass tint
+    color: "#5A6E82" # own pre-colored art, don't inherit the glass tint
   - type: Icon
     sprite: Structures/Windows/tinted_window.rsi
   - type: IconSmooth
@@ -149,7 +149,7 @@
     drawdepth: Mobs
     sprite: Structures/Windows/directional.rsi
     state: window
-    color: "#87BDDE"
+    color: "#99BBFF"
   - type: Icon
     sprite: Structures/Windows/directional.rsi
     state: window
@@ -229,7 +229,7 @@
   - type: RCDDeconstructable
     deconstructable: false
 
-- type: entity
+- type: entity # todo: double check
   id: WindowFrostedDirectional
   parent: WindowDirectional
   name: directional frosted window
