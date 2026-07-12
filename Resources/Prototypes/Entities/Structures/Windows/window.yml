@@ -241,10 +241,10 @@
   components:
   - type: Sprite
     sprite: Structures/Windows/directional.rsi
-    state: frosted_window
-    color: "#FFFFFF" # own pre-colored art, don't inherit the glass tint
+    state: reinforced_window
+    color: "#5A6E82" # own pre-colored art, don't inherit the glass tint
   - type: Icon
     sprite: Structures/Windows/directional.rsi
-    state: frosted_window
+    state: reinforced_window
   - type: StaticPrice
     price: 35

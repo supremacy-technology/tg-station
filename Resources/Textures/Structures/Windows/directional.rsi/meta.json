@@ -16,14 +16,6 @@
       "directions": 4
     },
     {
-      "name": "tinted_window",
-      "directions": 4
-    },
-    {
-      "name": "frosted_window",
-      "directions": 4
-    },
-    {
       "name": "clock_window",
       "directions": 4
     }
