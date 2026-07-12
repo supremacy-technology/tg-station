@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "license": "CC-BY-SA-3.0",
+  "copyright": "Edging overlay states derived from reinforced_window.rsi frame pixels, normalized to greyscale for code-side tinting (SmoothEdgeOverlay component).",
+  "size": {
+    "x": 32,
+    "y": 32
+  },
+  "states": [
+    {
+      "name": "edge0",
+      "directions": 4
+    },
+    {
+      "name": "edge1",
+      "directions": 4
+    },
+    {
+      "name": "edge2",
+      "directions": 4
+    },
+    {
+      "name": "edge3",
+      "directions": 4
+    },
+    {
+      "name": "edge4",
+      "directions": 4
+    },
+    {
+      "name": "edge5",
+      "directions": 4
+    },
+    {
+      "name": "edge6",
+      "directions": 4
+    },
+    {
+      "name": "edge7",
+      "directions": 4
+    }
+  ]
+}

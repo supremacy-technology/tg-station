@@ -6,7 +6,6 @@
   - type: Sprite
     drawdepth: WallTops
     sprite: Structures/Windows/shuttle_window.rsi
-    color: "#FFFFFF" # own pre-colored art, don't inherit the glass tint
   - type: Icon
     sprite: Structures/Windows/shuttle_window.rsi
   - type: Repairable
@@ -42,6 +41,9 @@
         acts: [ "Destruction" ]
   - type: IconSmooth
     base: swindow
+    color: "#FFFFFF" # own pre-colored art, don't inherit the glass tint
+  - type: SmoothEdgeOverlay
+    enabled: false # own pre-colored art with a baked-in frame
   - type: Construction
     graph: Window
     node: shuttleWindow

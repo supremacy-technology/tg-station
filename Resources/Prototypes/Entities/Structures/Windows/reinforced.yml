@@ -6,7 +6,6 @@
   - type: Sprite
     drawdepth: WallTops
     sprite: Structures/Windows/reinforced_window.rsi
-    color: "#99BBFF"
   - type: Icon
     sprite: Structures/Windows/reinforced_window.rsi
   - type: Repairable
@@ -46,6 +45,8 @@
         acts: [ "Destruction" ]
   - type: IconSmooth
     base: rwindow
+  - type: SmoothEdgeOverlay
+    sprite: Structures/Windows/reinforced_window_edges.rsi
   - type: Construction
     graph: Window
     node: reinforcedWindow

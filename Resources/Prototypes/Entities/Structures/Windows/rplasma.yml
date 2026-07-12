@@ -6,7 +6,6 @@
   - type: Sprite
     drawdepth: WallTops
     sprite: Structures/Windows/reinforced_window.rsi
-    color: "#C800FF" # plasma tint over the greyscale glass sprites
   - type: Icon
     sprite: Structures/Windows/reinforced_window.rsi
   - type: Damageable
@@ -44,6 +43,9 @@
         acts: [ "Destruction" ]
   - type: IconSmooth
     base: rwindow
+    color: "#C800FF" # plasma tint over the greyscale glass sprites
+  - type: SmoothEdgeOverlay
+    sprite: Structures/Windows/reinforced_window_edges.rsi
   - type: Construction
     graph: Window
     node: reinforcedPlasmaWindow

@@ -42,6 +42,15 @@ namespace Content.Client.IconSmoothing
         public string? Shader;
 
         /// <summary>
+        ///     If set, this color is applied to the smoothed layers themselves rather than
+        ///     tinting the whole sprite. Use together with <see cref="SmoothEdgeOverlayComponent"/>
+        ///     so the edging overlay keeps its own color while the base layers get tinted.
+        ///     Only used in <see cref="IconSmoothingMode.Corners"/> mode.
+        /// </summary>
+        [ViewVariables(VVAccess.ReadWrite), DataField("color")]
+        public Color? Color;
+
+        /// <summary>
         ///     Mode that controls how the icon should be selected.
         /// </summary>
         [ViewVariables(VVAccess.ReadWrite), DataField("mode")]

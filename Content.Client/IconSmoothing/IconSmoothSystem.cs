@@ -40,6 +40,7 @@ namespace Content.Client.IconSmoothing
             base.Initialize();
 
             InitializeEdge();
+            InitializeEdgeOverlay();
             SubscribeLocalEvent<IconSmoothComponent, AnchorStateChangedEvent>(OnAnchorChanged);
             SubscribeLocalEvent<IconSmoothComponent, ComponentShutdown>(OnShutdown);
             SubscribeLocalEvent<IconSmoothComponent, ComponentStartup>(OnStartup);
@@ -69,6 +70,9 @@ namespace Content.Client.IconSmoothing
                 sprite.LayerSetShader(CornerLayers.NW, component.Shader);
                 sprite.LayerSetShader(CornerLayers.SW, component.Shader);
             }
+
+            if (TryComp<SmoothEdgeOverlayComponent>(uid, out var overlay))
+                SetEdgeOverlayLayers((uid, sprite), overlay);
         }
 
         public void SetStateBase(EntityUid uid, IconSmoothComponent component, string newState)
@@ -78,6 +82,10 @@ namespace Content.Client.IconSmoothing
 
             component.StateBase = newState;
             SetCornerLayers((uid, sprite), component);
+
+            // Re-add the edging overlay so it stays above the freshly created base layers.
+            if (TryComp<SmoothEdgeOverlayComponent>(uid, out var overlay))
+                SetEdgeOverlayLayers((uid, sprite), overlay);
         }
 
         private void SetCornerLayers(Entity<SpriteComponent?> sprite, IconSmoothComponent component)
@@ -96,6 +104,14 @@ namespace Content.Client.IconSmoothing
             _sprite.LayerSetDirOffset(sprite, CornerLayers.NW, DirectionOffset.Flip);
             _sprite.LayerMapSet(sprite, CornerLayers.SW, _sprite.AddRsiLayer(sprite, state0));
             _sprite.LayerSetDirOffset(sprite, CornerLayers.SW, DirectionOffset.Clockwise);
+
+            if (component.Color is { } color)
+            {
+                _sprite.LayerSetColor(sprite, CornerLayers.SE, color);
+                _sprite.LayerSetColor(sprite, CornerLayers.NE, color);
+                _sprite.LayerSetColor(sprite, CornerLayers.NW, color);
+                _sprite.LayerSetColor(sprite, CornerLayers.SW, color);
+            }
         }
 
         private void OnShutdown(EntityUid uid, IconSmoothComponent component, ComponentShutdown args)
@@ -396,6 +412,8 @@ namespace Content.Client.IconSmoothing
             _sprite.LayerSetRsiState(spriteEnt.AsNullable(), CornerLayers.SE, $"{smooth.StateBase}{(int)cornerSE}");
             _sprite.LayerSetRsiState(spriteEnt.AsNullable(), CornerLayers.SW, $"{smooth.StateBase}{(int)cornerSW}");
             _sprite.LayerSetRsiState(spriteEnt.AsNullable(), CornerLayers.NW, $"{smooth.StateBase}{(int)cornerNW}");
+
+            UpdateEdgeOverlay(spriteEnt, cornerNE, cornerNW, cornerSW, cornerSE);
 
             var directions = DirectionFlag.None;
 
