@@ -103,6 +103,20 @@ public sealed partial class ModSuitDeployComponent : Component
     public string ContainerPrefix = "modsuit-part-";
 
     /// <summary>
+    ///     Inventory slots whose existing clothing is tucked away (and restored on retract) so the
+    ///     matching part deploys over whatever the wearer already has on, instead of being blocked.
+    ///     Defaults to the gauntlet and boot slots.
+    /// </summary>
+    [DataField]
+    public HashSet<string> OverwearSlots = new() { "gloves", "shoes" };
+
+    /// <summary>
+    ///     Prefix for the per-slot containers holding clothing stowed to deploy an overwear part over it.
+    /// </summary>
+    [DataField]
+    public string StowPrefix = "modsuit-stow-";
+
+    /// <summary>
     ///     Sound played when the suit deploys/seals.
     /// </summary>
     [DataField]
@@ -137,4 +151,10 @@ public sealed partial class ModSuitDeployComponent : Component
     /// </summary>
     [ViewVariables]
     public Dictionary<string, ContainerSlot> PartContainers = new();
+
+    /// <summary>
+    ///     Containers holding the wearer's stowed clothing while an overwear part is deployed, by slot.
+    /// </summary>
+    [ViewVariables]
+    public Dictionary<string, ContainerSlot> StowContainers = new();
 }

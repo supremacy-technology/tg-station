@@ -62,6 +62,12 @@ public sealed class ModSuitDeploySystem : EntitySystem
             ent.Comp.PartContainers[slot] =
                 _container.EnsureContainer<ContainerSlot>(ent, ent.Comp.ContainerPrefix + slot);
         }
+
+        foreach (var slot in ent.Comp.OverwearSlots)
+        {
+            ent.Comp.StowContainers[slot] =
+                _container.EnsureContainer<ContainerSlot>(ent, ent.Comp.StowPrefix + slot);
+        }
     }
 
     private void OnMapInit(Entity<ModSuitDeployComponent> ent, ref MapInitEvent args)
@@ -104,6 +110,14 @@ public sealed class ModSuitDeploySystem : EntitySystem
         {
             PredictedQueueDel(part);
         }
+
+        // Stowed items are the wearer's own clothing - dump them out rather than delete them with us.
+        foreach (var stow in ent.Comp.StowContainers.Values)
+        {
+            if (stow.ContainedEntity is { } item)
+                _container.Remove(item, stow);
+        }
+
     }
 
     private void OnGetActions(Entity<ModSuitDeployComponent> ent, ref GetItemActionsEvent args)
@@ -356,12 +370,17 @@ public sealed class ModSuitDeploySystem : EntitySystem
         if (!ent.Comp.PartUids.TryGetValue(slot, out var part))
             return;
 
-        // Something other than our part is already in the slot - can't deploy over it.
+        // Something other than our part is already in the slot.
         if (_inventory.TryGetSlotEntity(wearer, slot, out var existing) && existing != part)
         {
-            _popup.PopupClient(Loc.GetString("modsuit-deploy-slot-blocked",
-                ("suit", ent.Owner), ("slot", slot)), ent, wearer);
-            return;
+            // Overwear slots (gauntlets/boots) tuck the wearer's own clothing into the control unit
+            // so the part deploys over it; it's restored on retract. Other slots stay blocked.
+            if (!TryStowExisting(ent, wearer, slot, existing.Value))
+            {
+                _popup.PopupClient(Loc.GetString("modsuit-deploy-slot-blocked",
+                    ("suit", ent.Owner), ("slot", slot)), ent, wearer);
+                return;
+            }
         }
 
         _inventory.TryEquip(wearer, wearer, part, slot, silent: true, force: true, predicted: true);
@@ -376,7 +395,38 @@ public sealed class ModSuitDeploySystem : EntitySystem
         if (_inventory.TryGetSlotEntity(wearer, slot, out var existing) && existing == part)
             _inventory.TryUnequip(wearer, wearer, slot, silent: true, force: true);
 
+        // Put back any clothing we tucked away to deploy over it.
+        RestoreStowed(ent, wearer, slot);
+
         UpdateSealed(ent);
+    }
+
+    // Tucks the wearer's existing clothing in this slot into the control unit so an overwear part
+    // can take the slot. Returns false if the slot isn't an overwear slot (caller then blocks).
+    private bool TryStowExisting(Entity<ModSuitDeployComponent> ent, EntityUid wearer, string slot, EntityUid existing)
+    {
+        if (!ent.Comp.OverwearSlots.Contains(slot)
+            || !ent.Comp.StowContainers.TryGetValue(slot, out var stow))
+            return false;
+
+        if (!_inventory.TryUnequip(wearer, wearer, slot, silent: true, force: true, predicted: true))
+            return false;
+
+        _container.Insert(existing, stow);
+        return true;
+    }
+
+    // Restores clothing stowed for an overwear slot back onto the wearer (or drops it if that fails).
+    private void RestoreStowed(Entity<ModSuitDeployComponent> ent, EntityUid wearer, string slot)
+    {
+        if (!ent.Comp.StowContainers.TryGetValue(slot, out var stow)
+            || stow.ContainedEntity is not { } item)
+            return;
+
+        _container.Remove(item, stow);
+
+        // If it can't go back on (e.g. the wearer is gone), it's left at the control unit's feet.
+        _inventory.TryEquip(wearer, wearer, item, slot, silent: true, force: true, predicted: true);
     }
 
     public void DeployAll(Entity<ModSuitDeployComponent> ent, EntityUid wearer)

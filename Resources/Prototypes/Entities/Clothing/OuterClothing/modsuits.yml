@@ -64,6 +64,9 @@
       modsuit-part-outerClothing: !type:ContainerSlot {}
       modsuit-part-gloves: !type:ContainerSlot {}
       modsuit-part-shoes: !type:ContainerSlot {}
+      # Hold the wearer's own gloves/boots while the gauntlets/boots are deployed over them.
+      modsuit-stow-gloves: !type:ContainerSlot {}
+      modsuit-stow-shoes: !type:ContainerSlot {}
 
 # ---------------------------------------------------------------------------
 # Deployable parts
