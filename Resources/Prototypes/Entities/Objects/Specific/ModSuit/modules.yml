@@ -43,10 +43,7 @@
     toggleable: true
     wearerComponents:
     - type: PointLight
-      enabled: true
-      radius: 4
-      energy: 2.5
-      color: "#ffffff"
+      color: "#adffe6"
 
 # Toggleable magnetic stability - keeps the wearer from slipping.
 - type: entity
