@@ -32,6 +32,12 @@ public abstract partial class SharedZLevelsSystem
     private EntityQuery<ZLevelHighGroundComponent> _highgroundQuery;
     private EntityQuery<GravityAffectedComponent> _gravityAffectedQuery;
 
+    /// <summary>
+    /// Reused snapshot buffer for <see cref="Update"/>, so processing that mutates component
+    /// collections (level transitions, impact events) can't invalidate a live query.
+    /// </summary>
+    private readonly List<(EntityUid Uid, ZPhysicsComponent ZPhys, TransformComponent Xform, PhysicsComponent Physics)> _activeZPhysics = new();
+
     private void InitMovement()
     {
         _highgroundQuery = GetEntityQuery<ZLevelHighGroundComponent>();
@@ -123,9 +129,23 @@ public abstract partial class SharedZLevelsSystem
     {
         base.Update(frameTime);
 
+        // Snapshot the active set before processing: the level transitions below re-parent
+        // entities (adding/removing ActiveZPhysicsComponent through the activation system) and
+        // the impact events can spawn or delete entities. Either would invalidate a live
+        // EntityQueryEnumerator mid-iteration, which is the "Collection was modified" crash.
+        _activeZPhysics.Clear();
         var query = EntityQueryEnumerator<ZPhysicsComponent, ActiveZPhysicsComponent, TransformComponent, PhysicsComponent>();
         while (query.MoveNext(out var uid, out var zPhys, out _, out var xform, out var physics))
         {
+            _activeZPhysics.Add((uid, zPhys, xform, physics));
+        }
+
+        foreach (var (uid, zPhys, xform, physics) in _activeZPhysics)
+        {
+            // A previously-processed entity's impact events may have deleted this one.
+            if (TerminatingOrDeleted(uid))
+                continue;
+
             if (!_zMapQuery.HasComp(xform.MapUid))
                 continue;
 
