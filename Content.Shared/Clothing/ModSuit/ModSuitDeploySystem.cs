@@ -1,11 +1,8 @@
 using System.Linq;
 using Content.Shared.Actions;
-using Content.Shared.Body.Components;
-using Content.Shared.Body.Systems;
 using Content.Shared.Clothing.Components;
 using Content.Shared.Clothing.EntitySystems;
 using Content.Shared.Clothing.ModSuit.Components;
-using Content.Shared.Containers.ItemSlots;
 using Content.Shared.Inventory;
 using Content.Shared.Inventory.Events;
 using Content.Shared.Popups;
@@ -39,8 +36,6 @@ public sealed class ModSuitDeploySystem : EntitySystem
     [Dependency] private readonly ClothingSystem _clothing = default!;
     [Dependency] private readonly IGameTiming _timing = default!;
     [Dependency] private readonly INetManager _net = default!;
-    [Dependency] private readonly ItemSlotsSystem _itemSlots = default!;
-    [Dependency] private readonly SharedInternalsSystem _internals = default!;
 
     public override void Initialize()
     {
@@ -242,9 +237,6 @@ public sealed class ModSuitDeploySystem : EntitySystem
             var ev = new ModSuitPowerChangedEvent(true);
             RaiseLocalEvent(ent, ref ev);
 
-            // Hook the internal air tank into the wearer's internals now that the suit is powered.
-            ConnectTank(ent);
-
             // Fully sealed = airtight; otherwise it powers on but doesn't seal against space.
             message = AllDeployed(ent, wearer) ? "modsuit-activated" : "modsuit-activated-partial";
         }
@@ -264,44 +256,11 @@ public sealed class ModSuitDeploySystem : EntitySystem
         _clothing.SetEquippedPrefix(ent, null);
         Dirty(ent);
 
-        DisconnectTank(ent);
-
         if (!wasActive)
             return;
 
         var ev = new ModSuitPowerChangedEvent(false);
         RaiseLocalEvent(ent, ref ev);
-    }
-
-    // --- Internal air tank ------------------------------------------------------------------------
-
-    // Locks the tank slot unless the chestplate is deployed, so you can only load the tank when it's out.
-    private void UpdateTankSlot(Entity<ModSuitDeployComponent> ent, EntityUid wearer)
-    {
-        _itemSlots.SetLock(ent, ent.Comp.TankSlotId, !IsDeployed(ent, wearer, ent.Comp.TankGateSlot));
-    }
-
-    // Feeds the loaded tank into the wearer's internals (needs a breath tool, e.g. the deployed helmet).
-    private void ConnectTank(Entity<ModSuitDeployComponent> ent)
-    {
-        var wearer = Transform(ent).ParentUid;
-        if (!TryComp<InternalsComponent>(wearer, out var internals))
-            return;
-
-        if (_itemSlots.GetItemOrNull(ent, ent.Comp.TankSlotId) is { } tank)
-            _internals.TryConnectTank((wearer, internals), tank);
-    }
-
-    // Disconnects our tank from the wearer's internals (only if ours is the connected one).
-    private void DisconnectTank(Entity<ModSuitDeployComponent> ent)
-    {
-        var wearer = Transform(ent).ParentUid;
-        if (!TryComp<InternalsComponent>(wearer, out var internals))
-            return;
-
-        var tank = _itemSlots.GetItemOrNull(ent, ent.Comp.TankSlotId);
-        if (tank != null && internals.GasTankEntity == tank)
-            _internals.DisconnectTank((wearer, internals));
     }
 
     private void OnSealMessage(Entity<ModSuitDeployComponent> ent, ref ModSuitSealSlotMessage args)
@@ -467,9 +426,6 @@ public sealed class ModSuitDeploySystem : EntitySystem
             EnsureComp<SelfUnremovableClothingComponent>(ent);
         else
             RemComp<SelfUnremovableClothingComponent>(ent);
-
-        // The air-tank slot is only accessible while the chestplate is deployed.
-        UpdateTankSlot(ent, wearer);
 
         var sealedNow = AllDeployed(ent, wearer);
         if (ent.Comp.Sealed == sealedNow)

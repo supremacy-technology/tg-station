@@ -29,12 +29,6 @@
       cell_slot:
         name: power-cell-slot-component-slot-name-default
         startingItem: PowerCellMedium
-      mod_tank_slot:
-        name: modsuit-tank-slot
-        locked: true
-        whitelist:
-          components:
-          - GasTank
   # Module system (install/complexity budget).
   - type: ModSuit
     maxComplexity: 20
@@ -64,7 +58,6 @@
       storagebase: !type:Container
         ents: []
       cell_slot: !type:ContainerSlot {}
-      mod_tank_slot: !type:ContainerSlot {}
       modsuit-modules: !type:Container
         ents: []
       modsuit-part-head: !type:ContainerSlot {}
@@ -107,6 +100,12 @@
   - type: Clothing
     sprite: Clothing/OuterClothing/ModSuit/engineering.rsi
   - type: SelfUnremovableClothing
+  # While the chestplate is deployed the wearer gets a suit-storage slot; drop an air
+  # tank in there and internals will feed from it (no dedicated MODsuit tank slot needed).
+  - type: AllowSuitStorage
+    whitelist:
+      components:
+      - GasTank
   - type: PressureProtection
     highPressureMultiplier: 0.04
     lowPressureMultiplier: 1000

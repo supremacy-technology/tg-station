@@ -43,9 +43,6 @@ modsuit-panel-part-entry = {$name}: {$state}
 modsuit-panel-part-deployed = [color=lime]deployed[/color]
 modsuit-panel-part-stowed = [color=gray]stowed[/color]
 
-# MODsuit air tank slot
-modsuit-tank-slot = Air tank
-
 # MODsuit modules (radial toggle)
 modsuit-module-unpowered = {CAPITALIZE(THE($suit))} needs to be powered on to use modules.
 modsuit-radial-module-on = {$module} (on)

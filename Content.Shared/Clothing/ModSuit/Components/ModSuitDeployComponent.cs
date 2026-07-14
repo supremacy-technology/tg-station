@@ -103,19 +103,6 @@ public sealed partial class ModSuitDeployComponent : Component
     public string ContainerPrefix = "modsuit-part-";
 
     /// <summary>
-    ///     Id of the ItemSlot holding the internal air tank. Unlocked while the chestplate is deployed;
-    ///     the tank feeds the wearer's internals while the suit is powered on.
-    /// </summary>
-    [DataField]
-    public string TankSlotId = "mod_tank_slot";
-
-    /// <summary>
-    ///     The inventory slot whose deployment gates the air-tank slot (the chestplate).
-    /// </summary>
-    [DataField]
-    public string TankGateSlot = "outerClothing";
-
-    /// <summary>
     ///     Sound played when the suit deploys/seals.
     /// </summary>
     [DataField]
