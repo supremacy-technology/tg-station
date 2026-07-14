@@ -1,4 +1,5 @@
 using Content.Shared.Clothing.EntitySystems;
+using Content.Shared.Clothing.ModSuit;
 using Robust.Shared.GameStates;
 
 namespace Content.Shared.Clothing.Components;
@@ -11,7 +12,7 @@ namespace Content.Shared.Clothing.Components;
 ///</remarks>
 [NetworkedComponent]
 [RegisterComponent]
-[Access(typeof(SelfUnremovableClothingSystem))]
+[Access(typeof(SelfUnremovableClothingSystem), typeof(ModSuitDeploySystem))]
 public sealed partial class SelfUnremovableClothingComponent : Component
 {
 

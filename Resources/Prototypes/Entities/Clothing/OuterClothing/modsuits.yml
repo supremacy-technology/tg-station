@@ -1,0 +1,225 @@
+# MODsuit ("Modular Outerwear Device") - a port of the tgstation13 MODsuit.
+#
+# The control unit is worn on the BACK (like a backpack) and has storage. Its seal action opens a
+# radial menu that deploys/retracts individual parts - helmet, chestplate, gauntlets and boots - into
+# their own inventory slots, and a right-click verb seals/unseals everything at once. Because each part
+# carries pressure protection, a fully deployed suit keeps the wearer safe from pressure. The parts
+# cannot be removed by hand; they only retract through the control unit.
+#
+# NOTE: all sprites are placeholders reusing existing RSIs until dedicated MODsuit art is made.
+
+# ---------------------------------------------------------------------------
+# Control unit (worn on the back)
+# ---------------------------------------------------------------------------
+- type: entity
+  parent: ClothingBackpack
+  id: ClothingBackpackModSuitControl
+  name: MODsuit control unit
+  description: A compact Modular Outerwear Device worn on the back. Holds an internal power cell, storage, and installable modules, and deploys a sealed hardsuit on command.
+  components:
+  - type: Sprite
+    sprite: Clothing/Back/ModSuit/engineering.rsi
+  - type: Clothing
+    sprite: Clothing/Back/ModSuit/engineering.rsi
+  # An internal power cell runs the suit's modules.
+  - type: PowerCellSlot
+    cellSlotId: cell_slot
+  - type: ItemSlots
+    slots:
+      cell_slot:
+        name: power-cell-slot-component-slot-name-default
+        startingItem: PowerCellMedium
+      mod_tank_slot:
+        name: modsuit-tank-slot
+        locked: true
+        whitelist:
+          components:
+          - GasTank
+  # Module system (install/complexity budget).
+  - type: ModSuit
+    maxComplexity: 20
+  # Deployable, sealable parts.
+  - type: ModSuitDeploy
+    parts:
+      head: ClothingHeadHelmetModSuit
+      outerClothing: ClothingOuterModSuitPlate
+      gloves: ClothingHandsModSuitGauntlets
+      shoes: ClothingShoesModSuitBoots
+  # Radial menu opened by the seal action. StorageUiKey is re-declared because overriding
+  # UserInterface replaces the parent's interface dict (which carries the backpack storage UI).
+  - type: UserInterface
+    interfaces:
+      enum.StorageUiKey.Key:
+        type: StorageBoundUserInterface
+      enum.ModSuitUiKey.Seal:
+        type: ModSuitRadialBoundUserInterface
+      enum.ModSuitModuleUiKey.Modules:
+        type: ModSuitModuleRadialBoundUserInterface
+      enum.ModSuitPanelUiKey.Key:
+        type: ModSuitPanelBoundUserInterface
+  # Re-declared so all runtime containers are guaranteed to exist. storagebase comes from the
+  # ClothingBackpack parent; the rest back the cell, modules and deployable parts.
+  - type: ContainerContainer
+    containers:
+      storagebase: !type:Container
+        ents: []
+      cell_slot: !type:ContainerSlot {}
+      mod_tank_slot: !type:ContainerSlot {}
+      modsuit-modules: !type:Container
+        ents: []
+      modsuit-part-head: !type:ContainerSlot {}
+      modsuit-part-outerClothing: !type:ContainerSlot {}
+      modsuit-part-gloves: !type:ContainerSlot {}
+      modsuit-part-shoes: !type:ContainerSlot {}
+
+# ---------------------------------------------------------------------------
+# Deployable parts
+#
+# Each part parents a working clothing item (or clothing base + sprite) so it renders correctly on the
+# wearer, and is marked SelfUnremovableClothing so it can only be retracted through the control unit.
+# ---------------------------------------------------------------------------
+- type: entity
+  parent: ClothingHeadHardsuitBase
+  id: ClothingHeadHelmetModSuit
+  name: MODsuit helmet
+  description: The deployable helmet of a MODsuit. Airtight when sealed.
+  suffix: MODsuit
+  components:
+  # New RSI uses the default equipped-HELMET state, so no clothingVisuals remap is needed.
+  - type: Sprite
+    sprite: Clothing/Head/ModSuit/engineering.rsi
+  - type: Clothing
+    sprite: Clothing/Head/ModSuit/engineering.rsi
+  - type: SelfUnremovableClothing
+  - type: PressureProtection
+    highPressureMultiplier: 0.04
+    lowPressureMultiplier: 1000
+
+- type: entity
+  parent: ClothingOuterBase
+  id: ClothingOuterModSuitPlate
+  name: MODsuit chestplate
+  description: The deployable chestplate of a MODsuit.
+  suffix: MODsuit
+  components:
+  - type: Sprite
+    sprite: Clothing/OuterClothing/ModSuit/engineering.rsi
+  - type: Clothing
+    sprite: Clothing/OuterClothing/ModSuit/engineering.rsi
+  - type: SelfUnremovableClothing
+  - type: PressureProtection
+    highPressureMultiplier: 0.04
+    lowPressureMultiplier: 1000
+  - type: Armor
+    modifiers:
+      coefficients:
+        Blunt: 0.9
+        Slash: 0.9
+        Piercing: 0.9
+
+- type: entity
+  parent: ClothingHandsBase
+  id: ClothingHandsModSuitGauntlets
+  name: MODsuit gauntlets
+  description: The deployable gauntlets of a MODsuit.
+  suffix: MODsuit
+  components:
+  - type: Sprite
+    sprite: Clothing/Hands/ModSuit/engineering.rsi
+  - type: Clothing
+    sprite: Clothing/Hands/ModSuit/engineering.rsi
+  - type: SelfUnremovableClothing
+  - type: PressureProtection
+    highPressureMultiplier: 0.04
+    lowPressureMultiplier: 1000
+
+- type: entity
+  parent: ClothingShoesBase
+  id: ClothingShoesModSuitBoots
+  name: MODsuit boots
+  description: The deployable boots of a MODsuit.
+  suffix: MODsuit
+  components:
+  - type: Sprite
+    sprite: Clothing/Shoes/ModSuit/engineering.rsi
+  - type: Clothing
+    sprite: Clothing/Shoes/ModSuit/engineering.rsi
+  - type: SelfUnremovableClothing
+  - type: PressureProtection
+    highPressureMultiplier: 0.04
+    lowPressureMultiplier: 1000
+
+# ---------------------------------------------------------------------------
+# Seal / unseal action (the HUD button)
+# ---------------------------------------------------------------------------
+- type: entity
+  parent: BaseAction
+  id: ActionModSuitSeal
+  name: Seal/Unseal MODsuit
+  description: Open the seal menu to deploy or retract the suit's helmet, chestplate, gauntlets and boots. Right-click the suit to seal everything at once.
+  components:
+  - type: Action
+    itemIconStyle: BigItem
+    useDelay: 1
+    icon:
+      sprite: Clothing/Head/ModSuit/engineering.rsi
+      state: icon
+  - type: InstantAction
+    event: !type:ModSuitSealEvent
+
+- type: entity
+  parent: BaseAction
+  id: ActionModSuitActivate
+  name: Activate/Deactivate MODsuit
+  description: Power the deployed suit on or off. While powered on the suit switches to its sealed configuration.
+  components:
+  - type: Action
+    itemIconStyle: BigItem
+    useDelay: 1
+    icon:
+      sprite: Clothing/Back/ModSuit/engineering.rsi
+      state: icon
+  - type: InstantAction
+    event: !type:ModSuitActivateEvent
+
+- type: entity
+  parent: BaseAction
+  id: ActionModSuitModules
+  name: MODsuit Modules
+  description: Open the module menu to toggle your installed modules (flashlight, magnetic stability, ...).
+  components:
+  - type: Action
+    itemIconStyle: BigItem
+    useDelay: 1
+    icon:
+      sprite: Objects/Misc/module.rsi
+      state: blank_mod
+  - type: InstantAction
+    event: !type:ModSuitModulesEvent
+
+- type: entity
+  parent: BaseAction
+  id: ActionModSuitModuleToggle
+  name: Toggle MODsuit module
+  description: Toggle this MODsuit module on or off. Bindable to a hotkey.
+  components:
+  - type: Action
+    useDelay: 1
+    itemIconStyle: BigItem
+  - type: InstantAction
+    event: !type:ModSuitModuleActionEvent
+
+- type: entity
+  parent: BaseAction
+  id: ActionModSuitPanel
+  name: MOD Interface Panel
+  description: Open the MOD interface panel to review charge, complexity, installed modules and deploy status.
+  components:
+  - type: Action
+    itemIconStyle: BigItem
+    useDelay: 1
+    icon:
+      sprite: Objects/Misc/module.rsi
+      state: card_mod
+  - type: InstantAction
+    event: !type:ModSuitPanelEvent

@@ -1,0 +1,59 @@
+# MODsuit modules - install into a MODsuit (use in-hand on the control unit) to expand its
+# capabilities. Toggleable modules are switched from the module radial menu while the suit is powered on.
+# NOTE: sprites are placeholders reusing Objects/Misc/module.rsi until dedicated art is made.
+- type: entity
+  parent: BaseItem
+  id: BaseModSuitModule
+  name: base MODsuit module
+  abstract: true
+  components:
+  - type: Sprite
+    sprite: Objects/Misc/module.rsi
+    state: blank_mod
+  - type: Item
+    size: Small
+  - type: ModSuitModule
+    complexity: 1
+
+# Passive module - just takes up complexity.
+- type: entity
+  parent: BaseModSuitModule
+  id: ModSuitModuleStorage
+  name: MODsuit storage module
+  description: A compartment module that adds internal storage to a MODsuit. Cheap and reliable.
+  components:
+  - type: Sprite
+    sprite: Objects/Misc/module.rsi
+    state: beaker_holder
+  - type: ModSuitModule
+    complexity: 3
+
+# Toggleable flashlight - lights up the wearer while active.
+- type: entity
+  parent: BaseModSuitModule
+  id: ModSuitModuleFlashlight
+  name: MODsuit flashlight module
+  description: A shoulder lamp module. Toggle it from the module menu to light your way.
+  components:
+  - type: ModSuitModule
+    complexity: 1
+    toggleable: true
+    wearerComponents:
+    - type: PointLight
+      enabled: true
+      radius: 4
+      energy: 2.5
+      color: "#ffffff"
+
+# Toggleable magnetic stability - keeps the wearer from slipping.
+- type: entity
+  parent: BaseModSuitModule
+  id: ModSuitModuleMagStability
+  name: MODsuit magnetic stability module
+  description: Electromagnetic clamps in the boots. While active you won't slip.
+  components:
+  - type: ModSuitModule
+    complexity: 2
+    toggleable: true
+    wearerComponents:
+    - type: NoSlip
