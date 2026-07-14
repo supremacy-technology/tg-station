@@ -14,8 +14,8 @@
 - type: entity
   parent: ClothingBackpack
   id: ClothingBackpackModSuitControl
-  name: MODsuit control unit
-  description: A compact Modular Outerwear Device worn on the back. Holds an internal power cell, storage, and installable modules, and deploys a sealed hardsuit on command.
+  name: standard MOD control unit
+  description: The control unit of a Modular Outerwear Device, a powered suit that protects against various environments. A civilian class suit by Nakamura Engineering, doesn't offer much other than slightly quicker movement.
   components:
   - type: Sprite
     sprite: Clothing/Back/ModSuit/engineering.rsi
@@ -31,7 +31,7 @@
         startingItem: PowerCellMedium
   # Module system (install/complexity budget).
   - type: ModSuit
-    maxComplexity: 20
+    maxComplexity: 15
   # Deployable, sealable parts.
   - type: ModSuitDeploy
     parts:
@@ -77,8 +77,8 @@
 - type: entity
   parent: ClothingHeadHardsuitBase
   id: ClothingHeadHelmetModSuit
-  name: MODsuit helmet
-  description: The deployable helmet of a MODsuit. Airtight when sealed.
+  name: standard MOD helmet
+  description: A helmet for a MODsuit. A civilian class suit by Nakamura Engineering, doesn't offer much other than slightly quicker movement.
   suffix: MODsuit
   components:
   # New RSI uses the default equipped-HELMET state, so no clothingVisuals remap is needed.
@@ -94,8 +94,8 @@
 - type: entity
   parent: ClothingOuterBase
   id: ClothingOuterModSuitPlate
-  name: MODsuit chestplate
-  description: The deployable chestplate of a MODsuit.
+  name: standard MOD chestplate
+  description: A chestplate for a MODsuit. A civilian class suit by Nakamura Engineering, doesn't offer much other than slightly quicker movement.
   suffix: MODsuit
   components:
   - type: Sprite
@@ -122,8 +122,8 @@
 - type: entity
   parent: ClothingHandsBase
   id: ClothingHandsModSuitGauntlets
-  name: MODsuit gauntlets
-  description: The deployable gauntlets of a MODsuit.
+  name: standard MOD gauntlets
+  description: A pair of gauntlets for a MODsuit. A civilian class suit by Nakamura Engineering, doesn't offer much other than slightly quicker movement.
   suffix: MODsuit
   components:
   - type: Sprite
@@ -138,8 +138,8 @@
 - type: entity
   parent: ClothingShoesBase
   id: ClothingShoesModSuitBoots
-  name: MODsuit boots
-  description: The deployable boots of a MODsuit.
+  name: standard MOD boots
+  description: A pair of boots for a MODsuit. A civilian class suit by Nakamura Engineering, doesn't offer much other than slightly quicker movement.
   suffix: MODsuit
   components:
   - type: Sprite
@@ -152,13 +152,13 @@
     lowPressureMultiplier: 1000
 
 # ---------------------------------------------------------------------------
-# Seal / unseal action (the HUD button)
+# Action (the HUD button)
 # ---------------------------------------------------------------------------
 - type: entity
   parent: BaseAction
   id: ActionModSuitSeal
-  name: Seal/Unseal MODsuit
-  description: Open the seal menu to deploy or retract the suit's helmet, chestplate, gauntlets and boots. Right-click the suit to seal everything at once.
+  name: Deploy MODsuit
+  description: LMB - Deploy/Undeploy part. RMB - Deploy/Undeploy full suit.
   components:
   - type: Action
     itemIconStyle: BigItem
@@ -173,7 +173,7 @@
   parent: BaseAction
   id: ActionModSuitActivate
   name: Activate/Deactivate MODsuit
-  description: Power the deployed suit on or off. While powered on the suit switches to its sealed configuration.
+  description: LMB - Activate/Deactivate suit with prompt. RMB - Activate/Deactivate suit skipping prompt.
   components:
   - type: Action
     itemIconStyle: BigItem
@@ -202,8 +202,8 @@
 - type: entity
   parent: BaseAction
   id: ActionModSuitModuleToggle
-  name: Toggle MODsuit module
-  description: Toggle this MODsuit module on or off. Bindable to a hotkey.
+  name: Toggle Module
+  description: Toggle a MODsuit module.
   components:
   - type: Action
     useDelay: 1
@@ -214,7 +214,7 @@
 - type: entity
   parent: BaseAction
   id: ActionModSuitPanel
-  name: MOD Interface Panel
+  name: MODsuit Interface
   description: Open the MOD interface panel to review charge, complexity, installed modules and deploy status.
   components:
   - type: Action
