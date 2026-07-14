@@ -35,6 +35,9 @@
   name: MODsuit flashlight module
   description: A shoulder lamp module. Toggle it from the module menu to light your way.
   components:
+  - type: Sprite
+    sprite: Objects/Misc/MODmodules.rsi
+    state: flashlight
   - type: ModSuitModule
     complexity: 1
     toggleable: true
@@ -52,6 +55,9 @@
   name: MODsuit magnetic stability module
   description: Electromagnetic clamps in the boots. While active you won't slip.
   components:
+  - type: Sprite
+    sprite: Objects/Misc/MODmodules.rsi
+    state: magnet
   - type: ModSuitModule
     complexity: 2
     toggleable: true
