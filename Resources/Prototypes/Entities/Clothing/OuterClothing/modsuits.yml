@@ -24,6 +24,10 @@
   # An internal power cell runs the suit's modules.
   - type: PowerCellSlot
     cellSlotId: cell_slot
+  # Drains only while the suit is powered on; running dry powers it down where it stands.
+  - type: PowerCellDraw
+    drawRate: 3.6 # 200 seconds on the medium cell, matching SS13's DEFAULT_CHARGE_DRAIN
+    enabled: false # the suit spawns powered off - don't drain on the shelf
   - type: ItemSlots
     slots:
       cell_slot:

@@ -6,6 +6,7 @@ using Content.Shared.Clothing.ModSuit.Components;
 using Content.Shared.Inventory;
 using Content.Shared.Inventory.Events;
 using Content.Shared.Popups;
+using Content.Shared.PowerCell;
 using Content.Shared.UserInterface;
 using Content.Shared.Verbs;
 using Robust.Shared.Audio.Systems;
@@ -36,6 +37,7 @@ public sealed class ModSuitDeploySystem : EntitySystem
     [Dependency] private readonly ClothingSystem _clothing = default!;
     [Dependency] private readonly IGameTiming _timing = default!;
     [Dependency] private readonly INetManager _net = default!;
+    [Dependency] private readonly PowerCellSystem _cell = default!;
 
     public override void Initialize()
     {
@@ -51,6 +53,8 @@ public sealed class ModSuitDeploySystem : EntitySystem
         SubscribeLocalEvent<ModSuitDeployComponent, GetVerbsEvent<AlternativeVerb>>(OnGetVerbs);
         SubscribeLocalEvent<ModSuitDeployComponent, GotUnequippedEvent>(OnControlUnitUnequipped);
         SubscribeLocalEvent<ModSuitDeployComponent, BeingUnequippedAttemptEvent>(OnUnequipAttempt);
+        SubscribeLocalEvent<ModSuitDeployComponent, ModSuitPowerChangedEvent>(OnPowerChanged);
+        SubscribeLocalEvent<ModSuitDeployComponent, PowerCellSlotEmptyEvent>(OnCellEmpty);
 
         SubscribeLocalEvent<ModSuitPartComponent, GotUnequippedEvent>(OnPartUnequipped);
     }
@@ -175,6 +179,11 @@ public sealed class ModSuitDeploySystem : EntitySystem
         // space unless every sealing part is out. Pressure protection comes from the deployed parts.
         var target = !ent.Comp.Active;
 
+        // Powering on needs a cell with charge in it (SS13: "no power source!"). HasDrawCharge popups
+        // the reason to the wearer itself. Powering off is always allowed - never strand someone sealed.
+        if (target && !_cell.HasDrawCharge(ent.Owner, user: wearer))
+            return;
+
         ent.Comp.Sealing = true;
         ent.Comp.SealingTarget = target;
         ent.Comp.SealStep = 0;
@@ -256,6 +265,26 @@ public sealed class ModSuitDeploySystem : EntitySystem
         }
 
         _popup.PopupEntity(Loc.GetString(message, ("suit", ent.Owner)), ent, wearer);
+    }
+
+    // The suit only draws from its cell while it's actually running. Every power transition routes
+    // through ModSuitPowerChangedEvent, so this one handler keeps the draw in sync with Active.
+    private void OnPowerChanged(Entity<ModSuitDeployComponent> ent, ref ModSuitPowerChangedEvent args)
+    {
+        _cell.SetDrawEnabled(ent.Owner, args.Active);
+    }
+
+    // Cell ran dry, or was pulled out, while running (SS13: power_off()). Parts stay deployed, the
+    // suit just dies. Server-authoritative like the rest of the power flow - Active networks down.
+    private void OnCellEmpty(Entity<ModSuitDeployComponent> ent, ref PowerCellSlotEmptyEvent args)
+    {
+        if (_net.IsClient || !ent.Comp.Active)
+            return;
+
+        // DeactivateInstant raises ModSuitPowerChangedEvent(false), which switches modules off and
+        // disables the draw above.
+        DeactivateInstant(ent);
+        _popup.PopupEntity(Loc.GetString("modsuit-power-empty", ("suit", ent.Owner)), ent, Transform(ent).ParentUid);
     }
 
     // Instantly powers the suit down and clears its sealed sprites (used when retracting parts).

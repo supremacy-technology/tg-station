@@ -52,5 +52,6 @@ modsuit-radial-module-off = {$module} (off)
 modsuit-activated = {CAPITALIZE(THE($suit))} hums to life and seals shut.
 modsuit-activated-partial = {CAPITALIZE(THE($suit))} powers on, but it isn't sealed against space - deploy every part first.
 modsuit-deactivated = {CAPITALIZE(THE($suit))} powers down.
+modsuit-power-empty = {CAPITALIZE(THE($suit))} runs out of power and shuts down.
 modsuit-activate-not-deployed = You need to deploy every part before powering {THE($suit)} on.
 modsuit-cant-remove-deployed = You can't take {THE($suit)} off while it's deployed - retract it first.
