@@ -79,6 +79,17 @@ namespace Content.Server.Atmos.EntitySystems
         }
 
         /// <summary>
+        /// Recomputes an entity's cached pressure resistance. Resistance is otherwise only cached as
+        /// equipment is put on or taken off, so call this when worn equipment changes how much it
+        /// protects without leaving its slot - a MODsuit sealing shut, for instance.
+        /// </summary>
+        public void RefreshPressureResistance(Entity<BarotraumaComponent?> ent)
+        {
+            if (Resolve(ent, ref ent.Comp, false))
+                UpdateCachedResistances(ent, ent.Comp);
+        }
+
+        /// <summary>
         /// Computes the pressure resistance for the entity coming from the equipment and any innate resistance.
         /// The ProtectionSlots field of the Barotrauma component specifies which parts must be protected for the protection to have any effet.
         /// </summary>

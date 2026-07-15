@@ -22,4 +22,12 @@ public sealed partial class ModSuitPartComponent : Component
     /// </summary>
     [DataField, AutoNetworkedField]
     public string Slot = string.Empty;
+
+    /// <summary>
+    ///     Whether the suit has closed this part up. Drives its sealed sprite, and gates the pressure
+    ///     protection it carries - an open part is just plating, as in SS13, where a part's protection
+    ///     is only applied while sealed.
+    /// </summary>
+    [ViewVariables, AutoNetworkedField]
+    public bool Sealed;
 }

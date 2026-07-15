@@ -1,4 +1,3 @@
-using System.Linq;
 using Content.Shared.Actions;
 using Content.Shared.Clothing.Components;
 using Content.Shared.Clothing.EntitySystems;
@@ -9,9 +8,11 @@ using Content.Shared.Popups;
 using Content.Shared.PowerCell;
 using Content.Shared.UserInterface;
 using Content.Shared.Verbs;
+using Robust.Shared.Audio.Components;
 using Robust.Shared.Audio.Systems;
 using Robust.Shared.Containers;
 using Robust.Shared.Network;
+using Robust.Shared.Spawners;
 using Robust.Shared.Timing;
 
 namespace Content.Shared.Clothing.ModSuit;
@@ -184,6 +185,8 @@ public sealed class ModSuitDeploySystem : EntitySystem
         if (target && !_cell.HasDrawCharge(ent.Owner, user: wearer))
             return;
 
+        BuildSealSequence(ent, wearer, target);
+
         ent.Comp.Sealing = true;
         ent.Comp.SealingTarget = target;
         ent.Comp.SealStep = 0;
@@ -197,8 +200,30 @@ public sealed class ModSuitDeploySystem : EntitySystem
             var ev = new ModSuitPowerChangedEvent(false);
             RaiseLocalEvent(ent, ref ev);
         }
+    }
 
-        _audio.PlayPvs(target ? ent.Comp.ActivateSound : ent.Comp.DeactivateSound, ent);
+    /// <summary>
+    ///     Works out what the seal animation steps through, in SS13's order: powering down takes the
+    ///     control unit offline first and then unseals each deployed part, while powering up seals the
+    ///     parts first and boots the control unit last. Parts still retracted inside the unit are
+    ///     skipped entirely rather than sealed in place.
+    /// </summary>
+    private void BuildSealSequence(Entity<ModSuitDeployComponent> ent, EntityUid wearer, bool target)
+    {
+        var sequence = ent.Comp.SealSequence;
+        sequence.Clear();
+
+        if (!target)
+            sequence.Add(ent.Owner);
+
+        foreach (var slot in ent.Comp.Parts.Keys)
+        {
+            if (IsDeployed(ent, wearer, slot) && ent.Comp.PartUids.TryGetValue(slot, out var part))
+                sequence.Add(part);
+        }
+
+        if (target)
+            sequence.Add(ent.Owner);
     }
 
     public override void Update(float frameTime)
@@ -217,30 +242,28 @@ public sealed class ModSuitDeploySystem : EntitySystem
         }
     }
 
-    // Seals/unseals the next part (or, on the final step, the control unit) in the animation.
+    // Seals/unseals the next entry of the sequence, one per StepDelay, so the suit closes up around
+    // the wearer piece by piece instead of all at once.
     private void StepSeal(Entity<ModSuitDeployComponent> ent, TimeSpan now)
     {
-        var prefix = ent.Comp.SealingTarget ? ent.Comp.ActivePrefix : null;
-        var slots = ent.Comp.Parts.Keys.ToList();
-        var totalSteps = slots.Count + 1; // parts, then the control unit itself
+        var uid = ent.Comp.SealSequence[ent.Comp.SealStep];
 
-        if (ent.Comp.SealStep < slots.Count)
+        // A part can be destroyed mid-animation; just skip its step rather than sealing a corpse.
+        if (!TerminatingOrDeleted(uid))
         {
-            if (ent.Comp.PartUids.TryGetValue(slots[ent.Comp.SealStep], out var part))
-            {
-                _clothing.SetEquippedPrefix(part, prefix);
-                _audio.PlayPvs(ent.Comp.StepSound, part);
-            }
-        }
-        else
-        {
-            _clothing.SetEquippedPrefix(ent, prefix);
+            SetSealed(ent, uid, ent.Comp.SealingTarget);
+
+            // The control unit gets the power on/off chime, each part gets the mechanical step sound.
+            var sound = uid == ent.Owner
+                ? (ent.Comp.SealingTarget ? ent.Comp.ActivateSound : ent.Comp.DeactivateSound)
+                : ent.Comp.StepSound;
+            KeepAlivePitched(_audio.PlayPvs(sound, uid));
         }
 
         ent.Comp.SealStep++;
         ent.Comp.NextStep = now + ent.Comp.StepDelay;
 
-        if (ent.Comp.SealStep < totalSteps)
+        if (ent.Comp.SealStep < ent.Comp.SealSequence.Count)
             return;
 
         // Animation finished.
@@ -259,6 +282,12 @@ public sealed class ModSuitDeploySystem : EntitySystem
             Dirty(ent);
             var ev = new ModSuitPowerChangedEvent(true);
             RaiseLocalEvent(ent, ref ev);
+
+            // The boot jingle is for the wearer's ears only (SS13 plays it via playsound_local), on
+            // top of the control unit's chime everyone else hears. Played global rather than off the
+            // control unit: it's a noise inside your own helmet, so it wants no positioning, and
+            // hanging it off the unit parents the audio inside the back slot's container.
+            _audio.PlayGlobal(ent.Comp.NominalSound, wearer);
 
             // Fully sealed = airtight; otherwise it powers on but doesn't seal against space.
             message = AllDeployed(ent, wearer) ? "modsuit-activated" : "modsuit-activated-partial";
@@ -287,6 +316,53 @@ public sealed class ModSuitDeploySystem : EntitySystem
         _popup.PopupEntity(Loc.GetString("modsuit-power-empty", ("suit", ent.Owner)), ent, Transform(ent).ParentUid);
     }
 
+    /// <summary>
+    ///     Keeps a slowed-down sound alive long enough to finish.
+    ///
+    ///     Audio is despawned after the length of the file on disk, worked out before any pitch is
+    ///     applied and never divided by it (see SharedAudioSystem.SetupAudio). Anything pitched below
+    ///     1x therefore plays for longer than its own entity lives and gets cut off mid-note - our
+    ///     synth chimes run at about a seventh speed, so they'd lose half the chime. Rebuild the
+    ///     lifetime from how long the sound actually takes.
+    /// </summary>
+    private void KeepAlivePitched((EntityUid Entity, AudioComponent Component)? audio)
+    {
+        if (audio is not { } played)
+            return;
+
+        var pitch = played.Component.Params.Pitch;
+        if (pitch <= 0f || pitch >= 1f)
+            return;
+
+        if (!TryComp<TimedDespawnComponent>(played.Entity, out var despawn))
+            return;
+
+        var fileLength = despawn.Lifetime - SharedAudioSystem.AudioDespawnBuffer;
+        despawn.Lifetime = fileLength / pitch + SharedAudioSystem.AudioDespawnBuffer;
+    }
+
+    /// <summary>
+    ///     Opens or closes a single part (or the control unit): swaps its worn sprite, and flags it so
+    ///     the protection it only carries while shut can be applied or stripped. The one place seal
+    ///     state changes, so the sprite and the protection can never disagree.
+    /// </summary>
+    private void SetSealed(Entity<ModSuitDeployComponent> ent, EntityUid uid, bool isSealed)
+    {
+        _clothing.SetEquippedPrefix(uid, isSealed ? ent.Comp.ActivePrefix : null);
+
+        // The control unit is in the sequence too, but it's a backpack - it has no sealed state.
+        if (!TryComp<ModSuitPartComponent>(uid, out var part) || part.Sealed == isSealed)
+            return;
+
+        part.Sealed = isSealed;
+        Dirty(uid, part);
+
+        // The wearer comes off the control unit rather than the part: the unit stays on their back,
+        // while a part that's being retracted has already left the body by now.
+        var ev = new ModSuitPartSealedEvent(isSealed, Transform(ent).ParentUid);
+        RaiseLocalEvent(uid, ref ev);
+    }
+
     // Instantly powers the suit down and clears its sealed sprites (used when retracting parts).
     private void DeactivateInstant(Entity<ModSuitDeployComponent> ent)
     {
@@ -295,8 +371,8 @@ public sealed class ModSuitDeploySystem : EntitySystem
         ent.Comp.Active = false;
 
         foreach (var part in ent.Comp.PartUids.Values)
-            _clothing.SetEquippedPrefix(part, null);
-        _clothing.SetEquippedPrefix(ent, null);
+            SetSealed(ent, part, false);
+        SetSealed(ent, ent.Owner, false);
         Dirty(ent);
 
         if (!wasActive)
@@ -349,6 +425,10 @@ public sealed class ModSuitDeploySystem : EntitySystem
         if (ent.Comp.Master is not { } master || !TryComp<ModSuitDeployComponent>(master, out var deploy))
             return;
 
+        // Off the body it can't be sealed, whatever it was doing before. Covers stripping and any
+        // other route out of the slot, not just a tidy retract.
+        SetSealed((master, deploy), ent.Owner, false);
+
         if (deploy.PartContainers.TryGetValue(ent.Comp.Slot, out var container))
             _container.Insert(ent.Owner, container);
 
@@ -394,7 +474,11 @@ public sealed class ModSuitDeploySystem : EntitySystem
             DeployPart(ent, wearer, slot);
     }
 
-    public void DeployPart(Entity<ModSuitDeployComponent> ent, EntityUid wearer, string slot)
+    /// <param name="silent">
+    ///     Suppresses this part's own hiss, for when a bulk deploy/retract plays one sound for the
+    ///     whole set instead. SS13 does the same by passing a null user through to its deploy/retract.
+    /// </param>
+    public void DeployPart(Entity<ModSuitDeployComponent> ent, EntityUid wearer, string slot, bool silent = false)
     {
         if (!ent.Comp.PartUids.TryGetValue(slot, out var part))
             return;
@@ -412,20 +496,36 @@ public sealed class ModSuitDeploySystem : EntitySystem
             }
         }
 
-        _inventory.TryEquip(wearer, wearer, part, slot, silent: true, force: true, predicted: true);
+        if (!_inventory.TryEquip(wearer, wearer, part, slot, silent: true, force: true, predicted: true))
+            return;
+
+        // Deploying into a suit that's already running seals the part on the spot, as SS13 does -
+        // otherwise it'd sit open on a live suit, leaving a hole in the wearer's protection.
+        if (ent.Comp.Active)
+            SetSealed(ent, part, true);
+
+        if (!silent)
+            _audio.PlayPredicted(ent.Comp.StepSound, ent.Owner, wearer);
+
         UpdateSealed(ent);
     }
 
-    public void RetractPart(Entity<ModSuitDeployComponent> ent, EntityUid wearer, string slot)
+    /// <param name="silent">See <see cref="DeployPart"/>.</param>
+    public void RetractPart(Entity<ModSuitDeployComponent> ent, EntityUid wearer, string slot, bool silent = false)
     {
         if (!ent.Comp.PartUids.TryGetValue(slot, out var part))
             return;
 
-        if (_inventory.TryGetSlotEntity(wearer, slot, out var existing) && existing == part)
+        var wasDeployed = _inventory.TryGetSlotEntity(wearer, slot, out var existing) && existing == part;
+        if (wasDeployed)
             _inventory.TryUnequip(wearer, wearer, slot, silent: true, force: true);
 
         // Put back any clothing we tucked away to deploy over it.
         RestoreStowed(ent, wearer, slot);
+
+        // Only hiss if a part actually came back in - retracting an already-stowed slot is a no-op.
+        if (!silent && wasDeployed)
+            _audio.PlayPredicted(ent.Comp.StepSound, ent.Owner, wearer);
 
         UpdateSealed(ent);
     }
@@ -460,10 +560,11 @@ public sealed class ModSuitDeploySystem : EntitySystem
 
     public void DeployAll(Entity<ModSuitDeployComponent> ent, EntityUid wearer)
     {
+        // silent: deploying the lot is one hiss for the whole set, not one per part, as in SS13.
         foreach (var slot in ent.Comp.Parts.Keys)
-            DeployPart(ent, wearer, slot);
+            DeployPart(ent, wearer, slot, silent: true);
 
-        _audio.PlayPredicted(ent.Comp.SealSound, ent, wearer);
+        _audio.PlayPredicted(ent.Comp.StepSound, ent, wearer);
         _popup.PopupClient(Loc.GetString("modsuit-sealed", ("suit", ent.Owner)), ent, wearer);
     }
 
@@ -477,12 +578,12 @@ public sealed class ModSuitDeploySystem : EntitySystem
         {
             if (IsDeployed(ent, wearer, slot))
                 any = true;
-            RetractPart(ent, wearer, slot);
+            RetractPart(ent, wearer, slot, silent: true);
         }
 
         if (any)
         {
-            _audio.PlayPredicted(ent.Comp.UnsealSound, ent, wearer);
+            _audio.PlayPredicted(ent.Comp.StepSound, ent, wearer);
             _popup.PopupClient(Loc.GetString("modsuit-unsealed", ("suit", ent.Owner)), ent, wearer);
         }
     }
@@ -534,3 +635,14 @@ public sealed partial class ModSuitActivateEvent : InstantActionEvent
 /// </summary>
 [ByRefEvent]
 public readonly record struct ModSuitPowerChangedEvent(bool Active);
+
+/// <summary>
+///     Raised on a MODsuit part when the suit seals or unseals it, so the protection it only carries
+///     while shut can be applied or stripped.
+/// </summary>
+/// <param name="Wearer">
+///     Who the suit is on. Passed along because a part being retracted has already left the body by
+///     the time this is raised, so its own transform no longer points at them.
+/// </param>
+[ByRefEvent]
+public readonly record struct ModSuitPartSealedEvent(bool Sealed, EntityUid Wearer);

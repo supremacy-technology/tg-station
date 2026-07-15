@@ -94,6 +94,11 @@
   - type: PressureProtection
     highPressureMultiplier: 0.04
     lowPressureMultiplier: 1000
+  # Overrides the looser value inherited from ClothingHeadHardsuitBase. Only applies while sealed -
+  # see ModSuitPartProtectionSystem.
+  - type: TemperatureProtection
+    heatingCoefficient: 0.05
+    coolingCoefficient: 0.05
 
 - type: entity
   parent: ClothingOuterBase
@@ -116,6 +121,9 @@
   - type: PressureProtection
     highPressureMultiplier: 0.04
     lowPressureMultiplier: 1000
+  - type: TemperatureProtection
+    heatingCoefficient: 0.05
+    coolingCoefficient: 0.05
   - type: Armor
     modifiers:
       coefficients:
@@ -138,6 +146,9 @@
   - type: PressureProtection
     highPressureMultiplier: 0.04
     lowPressureMultiplier: 1000
+  - type: TemperatureProtection
+    heatingCoefficient: 0.05
+    coolingCoefficient: 0.05
 
 - type: entity
   parent: ClothingShoesBase
@@ -154,6 +165,9 @@
   - type: PressureProtection
     highPressureMultiplier: 0.04
     lowPressureMultiplier: 1000
+  - type: TemperatureProtection
+    heatingCoefficient: 0.05
+    coolingCoefficient: 0.05
 
 # ---------------------------------------------------------------------------
 # Action (the HUD button)
