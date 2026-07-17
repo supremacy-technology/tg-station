@@ -81,30 +81,6 @@
       - tool: Cutting
         doAfter: 2
 
-  - node: bed
-    entity: WebBed
-    edges:
-    - to: start
-      completed:
-      - !type:SpawnPrototype
-        prototype: MaterialWebSilk1
-        amount: 5 # One silk loss, cry
-      steps:
-      - tool: Cutting
-        doAfter: 2
-
-  - node: chair
-    entity: ChairWeb
-    edges:
-    - to: start
-      completed:
-      - !type:SpawnPrototype
-        prototype: MaterialWebSilk1
-        amount: 3
-      steps:
-      - tool: Cutting
-        doAfter: 2
-
   - node: crate
     entity: CrateWeb
     edges:
