@@ -30,12 +30,6 @@
   parent: BaseStationTile
   name: tiles-steel-floor
   sprite: /Textures/Tiles/steel.png
-  variants: 4
-  placementVariants:
-  - 1.0
-  - 1.0
-  - 1.0
-  - 1.0
   itemDrop: FloorTileItemSteel
 
 - type: tile
