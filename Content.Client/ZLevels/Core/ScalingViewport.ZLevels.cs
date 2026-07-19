@@ -19,7 +19,6 @@ namespace Content.Client.Viewport;
 public sealed partial class ScalingViewport
 {
     [Dependency] private readonly IMapManager _mapManager = default!;
-    [Dependency] private readonly IEyeManager _eyeManager = default!;
     [Dependency] private readonly IPlayerManager _player = default!;
     [Dependency] private readonly ITileDefinitionManager _tile = default!;
 
@@ -40,15 +39,17 @@ public sealed partial class ScalingViewport
         if (_xformQuery is null || !_xformQuery.Value.TryComp(mapUid, out var xform))
             return true;
 
-        var drawBox = GetDrawBox();
+        // Use this viewport's own projection, not the global eye: camera monitors and other
+        // secondary viewports have eyes unrelated to the main viewport.
+        var drawBox = ((UIBox2) GetDrawBox()).Translated(GlobalPixelPosition);
         var mapId = xform.MapID;
 
         var corners = new[]
         {
-            _eyeManager.ScreenToMap(drawBox.BottomLeft).Position,
-            _eyeManager.ScreenToMap(drawBox.BottomRight).Position,
-            _eyeManager.ScreenToMap(drawBox.TopLeft).Position,
-            _eyeManager.ScreenToMap(drawBox.TopRight).Position
+            ScreenToMap(drawBox.BottomLeft).Position,
+            ScreenToMap(drawBox.BottomRight).Position,
+            ScreenToMap(drawBox.TopLeft).Position,
+            ScreenToMap(drawBox.TopRight).Position
         };
 
         float minX = float.MaxValue, minY = float.MaxValue;
@@ -91,11 +92,6 @@ public sealed partial class ScalingViewport
 
     private void RenderZLevels(IClydeViewport viewport)
     {
-        if (_eye is null)
-            return;
-
-        _fallbackEye = _eye;
-
         // Cache frequently accessed components/systems
         _xformQuery ??= _entityManager.GetEntityQuery<TransformComponent>();
         _mapQuery ??= _entityManager.GetEntityQuery<MapComponent>();
@@ -104,31 +100,39 @@ public sealed partial class ScalingViewport
         _zLevels ??= _entityManager.System<ClientZLevelsSystem>();
         _mapSystem ??= _entityManager.System<SharedMapSystem>();
 
-        if (_player.LocalEntity is null)
+        // Any viewport that isn't looking at a z-network map (camera monitors, tabletop,
+        // admin cameras, or simply no eye yet) renders as a plain single-level viewport.
+        if (_eye is null ||
+            !_mapSystem.TryGetMap(_eye.Position.MapId, out var eyeMap) ||
+            !_entityManager.HasComponent<ZLevelMapComponent>(eyeMap))
+        {
+            viewport.Eye = _eye;
+            viewport.ClearColor = Color.Black;
+            viewport.Render();
             return;
+        }
 
-        if (!_entityManager.TryGetComponent<ZLevelViewerComponent>(_player.LocalEntity.Value, out var zLevelViewer))
-            return;
+        _fallbackEye = _eye;
 
-        if (!_xformQuery.Value.TryComp(_player.LocalEntity, out var playerXform))
-            return;
-
-        if (playerXform.MapUid is null)
-            return;
-
-        // Calculate visible z-levels above based on whether LookUp is enabled and ceiling visibility
+        // LookUp only applies when this viewport is following the local player.
         var lookUp = 0;
-        if (zLevelViewer.LookUp)
-            lookUp = _zLevels.GetVisibleZLevelsAbove(_player.LocalEntity.Value, playerXform.MapUid);
+        if (_player.LocalEntity is { } player &&
+            _entityManager.TryGetComponent<ZLevelViewerComponent>(player, out var zLevelViewer) &&
+            zLevelViewer.LookUp &&
+            _xformQuery.Value.TryComp(player, out var playerXform) &&
+            playerXform.MapUid == eyeMap)
+        {
+            lookUp = _zLevels.GetVisibleZLevelsAbove(player, eyeMap.Value);
+        }
 
         var lowestDepth = 0;
         for (var i = 0; i >= -SharedZLevelsSystem.MaxZLevelsBelowRendering; i--)
         {
-            var checkingMap = playerXform.MapUid.Value;
+            var checkingMap = eyeMap.Value;
 
             if (i != 0)
             {
-                if (!_zLevels.TryMapOffset(playerXform.MapUid.Value, i, out var mapUidBelow))
+                if (!_zLevels.TryMapOffset(eyeMap.Value, i, out var mapUidBelow))
                     continue;
 
                 checkingMap = mapUidBelow.Value;
@@ -147,7 +151,7 @@ public sealed partial class ScalingViewport
                 viewport.Eye = _fallbackEye;
             else
             {
-                if (!_zLevels.TryMapOffset(playerXform.MapUid.Value, depth, out var mapUidBelow))
+                if (!_zLevels.TryMapOffset(eyeMap.Value, depth, out var mapUidBelow))
                     continue;
 
                 if (!_mapQuery.Value.TryComp(mapUidBelow.Value, out var mapComp))

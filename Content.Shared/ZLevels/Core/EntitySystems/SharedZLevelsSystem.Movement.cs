@@ -178,7 +178,8 @@ public abstract partial class SharedZLevelsSystem
             {
                 if (distanceToGround <= 0.05f) //There`s a ground
                 {
-                    if (MathF.Abs(zPhys.Velocity) >= ImpactVelocityLimit)
+                    var realImpact = MathF.Abs(zPhys.Velocity) >= ImpactVelocityLimit;
+                    if (realImpact)
                     {
                         var ev = new ZLevelHitEvent(-zPhys.Velocity);
                         RaiseLocalEvent(uid, ref ev);
@@ -186,9 +187,11 @@ public abstract partial class SharedZLevelsSystem
                         RaiseLocalEvent(uid, ref land);
                     }
 
-                    // In weightlessness impacts just stop the entity: with no gravity to bring
-                    // it back down, a bounce would send it drifting upwards forever.
-                    zPhys.Velocity = HasZGravity(uid) ? -zPhys.Velocity * zPhys.Bounciness : 0f;
+                    // Bounce only on real impacts, and only under gravity. The standing rest
+                    // state must settle to velocity 0: a residual positive bounce velocity
+                    // survives a later gravity loss (nothing damps upward speed when
+                    // weightless) and sends the entity drifting up through the z-stack.
+                    zPhys.Velocity = realImpact && HasZGravity(uid) ? -zPhys.Velocity * zPhys.Bounciness : 0f;
                 }
             }
 
@@ -218,7 +221,8 @@ public abstract partial class SharedZLevelsSystem
             {
                 if (HasTileAbove(uid)) //Hit roof
                 {
-                    if (MathF.Abs(zPhys.Velocity) >= ImpactVelocityLimit)
+                    var realImpact = MathF.Abs(zPhys.Velocity) >= ImpactVelocityLimit;
+                    if (realImpact)
                     {
                         var ev = new ZLevelHitEvent(zPhys.Velocity);
                         RaiseLocalEvent(uid, ref ev);
@@ -227,7 +231,7 @@ public abstract partial class SharedZLevelsSystem
                     }
 
                     zPhys.LocalPosition = 1;
-                    zPhys.Velocity = HasZGravity(uid) ? -zPhys.Velocity * zPhys.Bounciness : 0f;
+                    zPhys.Velocity = realImpact && HasZGravity(uid) ? -zPhys.Velocity * zPhys.Bounciness : 0f;
                 }
                 else //Move up
                 {
@@ -352,7 +356,10 @@ public abstract partial class SharedZLevelsSystem
                 return -floor;
         }
 
-        return 0f;
+        // No ground within reach: report it below anything we can see so the entity keeps
+        // falling. After each level transition the cache recomputes, so deep shafts resolve
+        // one level at a time instead of pinning the entity to a phantom floor at height 0.
+        return -(maxFloors + 1);
     }
 
     /// <summary>

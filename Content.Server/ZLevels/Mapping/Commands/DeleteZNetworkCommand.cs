@@ -48,7 +48,7 @@ public sealed class DeleteZNetworkCommand : LocalizedEntityCommands
 
         if (!_entities.HasComponent<ZLevelsNetworkComponent>(target))
         {
-            shell.WriteError($"Target entity doesnt have CEZLevelsNetworkComponent {args[0]}");
+            shell.WriteError($"Target entity doesnt have ZLevelsNetworkComponent {args[0]}");
             return;
         }
 

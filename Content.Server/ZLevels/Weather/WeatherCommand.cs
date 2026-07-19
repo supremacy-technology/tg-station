@@ -47,7 +47,7 @@ public sealed class WeatherCommand : LocalizedCommands
 
         if (!_entities.TryGetComponent<ZLevelsNetworkComponent>(target, out var levelComp))
         {
-            shell.WriteError($"Target entity doesnt have CEZLevelsNetworkComponent {args[1]}");
+            shell.WriteError($"Target entity doesnt have ZLevelsNetworkComponent {args[1]}");
             return;
         }
 

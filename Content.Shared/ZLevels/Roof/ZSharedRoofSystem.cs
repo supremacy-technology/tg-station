@@ -78,7 +78,10 @@ public abstract class ZSharedRoofSystem : EntitySystem
             {
                 Roof.SetRoof((mapBelow, mapGridBelow, roofBelow), indices, rooved);
 
-                if (Map.TryGetTile(mapGridBelow, indices, out var tile) && !tile.IsEmpty)
+                // Match RecalculateNetworkRoofs: only opaque tiles roof the levels below,
+                // transparent ones (glass floors, catwalks) let light state pass through.
+                if (Map.TryGetTile(mapGridBelow, indices, out var tile) && !tile.IsEmpty &&
+                    !((ContentTileDefinition) TilDefMan[tile.TypeId]).Transparent)
                     roofMap[indices] = true;
             }
         }

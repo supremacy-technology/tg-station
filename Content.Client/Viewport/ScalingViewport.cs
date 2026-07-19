@@ -152,8 +152,6 @@ namespace Content.Client.Viewport
 
             RenderZLevels(_viewport!);
 
-            //_viewport!.Render();
-
             if (_queuedScreenshots.Count != 0)
             {
                 var callbacks = _queuedScreenshots.ToArray();

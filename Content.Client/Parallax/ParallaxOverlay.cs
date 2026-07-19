@@ -43,10 +43,8 @@ public sealed class ParallaxOverlay : Overlay
 
         if (args.Viewport.Eye is ScalingViewport.ZEye zEye)
             return zEye.LowestDepth == zEye.Depth;
-        else
-            return !_zLevel.TryMapDown(args.MapUid, out _);
 
-        //return true;
+        return !_zLevel.TryMapDown(args.MapUid, out _);
     }
 
     protected override void Draw(in OverlayDrawArgs args)
