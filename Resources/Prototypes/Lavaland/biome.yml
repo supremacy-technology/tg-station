@@ -85,3 +85,31 @@
   prototype: MobGoliath
   minGroupSize: 1
   maxGroupSize: 2
+
+- type: biomeMarkerLayer
+  id: LegionsLavaland
+  prototype: MobLegion
+  maxCount: 25
+  minGroupSize: 1
+  maxGroupSize: 3
+
+- type: biomeMarkerLayer
+  id: BrimdemonsLavaland
+  prototype: MobBrimdemon
+  maxCount: 15
+  minGroupSize: 1
+  maxGroupSize: 1
+
+- type: biomeMarkerLayer
+  id: BilewormsLavaland
+  prototype: MobBileworm
+  maxCount: 20
+  minGroupSize: 1
+  maxGroupSize: 2
+
+- type: biomeMarkerLayer
+  id: LobstrositiesLavaland
+  prototype: MobLobstrosity
+  maxCount: 20
+  minGroupSize: 1
+  maxGroupSize: 2

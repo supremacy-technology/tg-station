@@ -1,0 +1,103 @@
+# Lavaland megafauna. One roaming boss per round for now: the ash drake.
+
+- type: damageModifierSet
+  id: AshDrake
+  coefficients:
+    Heat: 0 # lives in lava and ash storms
+
+- type: entity
+  id: MobAshDrake
+  parent: BaseMobAsteroid
+  name: ash drake
+  description: A titanic dragon of the wastes. Attacking it is suicide, but its hoard is legendary.
+  components:
+  - type: Sprite
+    drawdepth: Mobs
+    sprite: Mobs/Aliens/Lavaland/ash_drake.rsi
+    layers:
+    - map: [ "enum.DamageStateVisualLayers.Base" ]
+      state: dragon
+  - type: DamageStateVisuals
+    states:
+      Alive:
+        Base: dragon
+      Dead:
+        Base: dead
+  - type: Damageable
+    damageContainer: Biological
+    damageModifierSet: AshDrake
+  - type: MobThresholds
+    thresholds:
+      0: Alive
+      800: Dead
+  - type: MovementSpeedModifier
+    baseWalkSpeed: 2.8
+    baseSprintSpeed: 3.2
+  - type: MeleeWeapon
+    soundHit:
+      path: /Audio/Weapons/bladeslice.ogg
+    angle: 0
+    attackRate: 0.8
+    damage:
+      types:
+        Slash: 20
+        Piercing: 10
+  - type: NpcFactionMember
+    factions:
+    - SimpleHostile
+  - type: HTN
+    rootTask:
+      task: SimpleHostileCompound
+    blackboard:
+      VisionRadius: !type:Single
+        10
+      AggroVisionRadius: !type:Single
+        14
+  # Fire breath: reuses the space dragon's ActionGun stack, driven by the NPC.
+  - type: ActionGun
+    action: ActionDragonsBreath
+    gunProto: DragonsBreathGun
+  - type: NPCUseActionOnTarget
+    actionId: ActionDragonsBreath
+  - type: PointLight
+    radius: 2.5
+    energy: 3
+    color: "#ff8c1a"
+  - type: Butcherable
+    spawned:
+    - id: FoodMeatGoliath
+      amount: 10
+  # The hoard drops next to the corpse when the drake falls.
+  - type: Destructible
+    thresholds:
+    - trigger:
+        !type:DamageTrigger
+        damage: 800
+      behaviors:
+      - !type:PlaySoundBehavior
+        sound:
+          path: /Audio/Animals/space_dragon_roar.ogg
+      - !type:SpawnEntitiesBehavior
+        spawn:
+          CrateAshDrake:
+            min: 1
+            max: 1
+  # ponytail: no swoop/lava-pool phases yet ("swoop" sprite state ready); plain
+  # chase + melee + fire breath. Add phase AI when a boss framework exists.
+
+- type: entity
+  id: CrateAshDrake
+  parent: CrateGeneric
+  name: drake hoard chest
+  description: The glittering hoard of an ash drake, still warm to the touch.
+  components:
+  - type: StorageFill
+    contents:
+    - id: MaterialDiamond1
+      amount: 3
+    - id: IngotGold1
+      amount: 5
+    - id: LegionCore
+      amount: 2
+    - id: SpaceCash1000
+      amount: 2

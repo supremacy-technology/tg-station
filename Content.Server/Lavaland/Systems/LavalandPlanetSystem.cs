@@ -13,6 +13,7 @@ using Content.Shared.Mobs.Components;
 using Content.Shared.Parallax.Biomes;
 using Content.Shared.Salvage;
 using Robust.Shared.Configuration;
+using Robust.Shared.EntitySerialization;
 using Robust.Shared.EntitySerialization.Systems;
 using Robust.Shared.Map;
 using Robust.Shared.Map.Components;
@@ -53,6 +54,7 @@ public sealed class LavalandPlanetSystem : EntitySystem
     private static readonly string[] MobLayers =
     {
         "WatchersLavaland", "WatchersMagmawing", "GoliathLavaland",
+        "LegionsLavaland", "BrimdemonsLavaland", "BilewormsLavaland", "LobstrositiesLavaland",
     };
 
     private static readonly ResPath OutpostPath = new("/Maps/Lavaland/mining_outpost.yml");
@@ -91,7 +93,6 @@ public sealed class LavalandPlanetSystem : EntitySystem
         new("/Maps/Lavaland/roundel.yml"),
         new("/Maps/Lavaland/shinobi_graveyard.yml"),
         new("/Maps/Lavaland/solemn_lament.yml"),
-        new("/Maps/Lavaland/temple.yml"),
         new("/Maps/Lavaland/Envy.yml"),
         new("/Maps/Lavaland/Gluttony.yml"),
         new("/Maps/Lavaland/Greed.yml"),
@@ -100,10 +101,29 @@ public sealed class LavalandPlanetSystem : EntitySystem
         new("/Maps/Lavaland/sloth.yml"),
     };
 
+    // These ruin files are saved as full maps rather than grids; they get merged in.
+    private static readonly ResPath[] MapRuinPool =
+    {
+        new("/Maps/Lavaland/basalt_ruin.yml"),
+        new("/Maps/Lavaland/crashedsyndiepod.yml"),
+        new("/Maps/Lavaland/wrecked_outpost.yml"),
+    };
+
+    private static readonly ResPath NecropolisPath = new("/Maps/Lavaland/temple.yml");
+    private static readonly EntProtoId TendrilProto = "StructureTendril";
+    private static readonly EntProtoId DrakeProto = "MobAshDrake";
+
     private const int RuinCount = 8;
     private const float RuinMinRadius = 90f;
     private const float RuinMaxRadius = 220f;
     private const float PlanetRange = 256f;
+
+    private const int TendrilCount = 6;
+    private const float TendrilMinRadius = 60f;
+    private const float TendrilMaxRadius = 230f;
+    private const float NecropolisRadius = 235f;
+    private const int NecropolisTendrils = 4;
+    private const float NecropolisGuardRadius = 26f;
 
     private const float StormCooldownMinSeconds = 480f;
     private const float StormCooldownMaxSeconds = 900f;
@@ -164,6 +184,16 @@ public sealed class LavalandPlanetSystem : EntitySystem
             Log.Error($"Lavaland failed to load mining outpost grid {OutpostPath}");
 
         PlaceRuins(mapId);
+        PlaceTendrils(mapUid);
+        PlaceNecropolis(mapUid, mapId);
+
+        // One roaming boss per round.
+        var drakeAngle = MathHelper.TwoPi * _random.NextFloat();
+        var drakeRadius = _random.NextFloat(140f, 200f);
+        var drakePos = new System.Numerics.Vector2(
+            MathF.Round(MathF.Cos(drakeAngle) * drakeRadius),
+            MathF.Round(MathF.Sin(drakeAngle) * drakeRadius));
+        Spawn(DrakeProto, new EntityCoordinates(mapUid, drakePos));
 
         var lavaland = AddComp<LavalandMapComponent>(mapUid);
         lavaland.NextStormTime = _timing.CurTime + TimeSpan.FromSeconds(_random.NextFloat(FirstStormMinSeconds, FirstStormMaxSeconds));
@@ -179,6 +209,8 @@ public sealed class LavalandPlanetSystem : EntitySystem
     private void PlaceRuins(MapId mapId)
     {
         var pool = new List<ResPath>(RuinPool);
+        pool.AddRange(MapRuinPool);
+        var mapCategory = new HashSet<ResPath>(MapRuinPool);
 
         // ponytail: fixed angular slots + random radius, no overlap solver; revisit if ruins ever collide.
         for (var i = 0; i < RuinCount; i++)
@@ -193,10 +225,80 @@ public sealed class LavalandPlanetSystem : EntitySystem
                 MathF.Round(MathF.Cos(angle) * radius),
                 MathF.Round(MathF.Sin(angle) * radius));
 
-            if (_loader.TryLoadGrid(mapId, path, out var ruin, offset: offset))
-                SnapToTileGrid(ruin.Value);
+            LoadRuin(mapId, path, offset, mapCategory.Contains(path));
+        }
+    }
+
+    private void LoadRuin(MapId mapId, ResPath path, System.Numerics.Vector2 offset, bool isMapFile)
+    {
+        if (isMapFile)
+        {
+            var opts = new MapLoadOptions
+            {
+                MergeMap = mapId,
+                Offset = offset,
+                ExpectedCategory = FileCategory.Map,
+            };
+
+            if (_loader.TryLoadGeneric(path, out var result, opts))
+            {
+                foreach (var grid in result.Grids)
+                {
+                    SnapToTileGrid(grid);
+                }
+            }
             else
-                Log.Error($"Lavaland failed to load ruin grid {path}");
+            {
+                Log.Error($"Lavaland failed to merge ruin map {path}");
+            }
+
+            return;
+        }
+
+        if (_loader.TryLoadGrid(mapId, path, out var ruin, offset: offset))
+            SnapToTileGrid(ruin.Value);
+        else
+            Log.Error($"Lavaland failed to load ruin grid {path}");
+    }
+
+    /// <summary>
+    /// Scatters lone tendrils across the open basalt.
+    /// </summary>
+    private void PlaceTendrils(EntityUid mapUid)
+    {
+        for (var i = 0; i < TendrilCount; i++)
+        {
+            var angle = MathHelper.TwoPi * _random.NextFloat();
+            var radius = _random.NextFloat(TendrilMinRadius, TendrilMaxRadius);
+            var pos = new System.Numerics.Vector2(
+                MathF.Round(MathF.Cos(angle) * radius),
+                MathF.Round(MathF.Sin(angle) * radius));
+
+            Spawn(TendrilProto, new EntityCoordinates(mapUid, pos));
+        }
+    }
+
+    /// <summary>
+    /// The necropolis: the sin temple at the planet's rim, guarded by a ring of tendrils.
+    /// </summary>
+    private void PlaceNecropolis(EntityUid mapUid, MapId mapId)
+    {
+        var angle = MathHelper.TwoPi * _random.NextFloat();
+        var center = new System.Numerics.Vector2(
+            MathF.Round(MathF.Cos(angle) * NecropolisRadius),
+            MathF.Round(MathF.Sin(angle) * NecropolisRadius));
+
+        LoadRuin(mapId, NecropolisPath, center, false);
+
+        // ponytail: fixed guard ring; tendrils may land on temple walls if its footprint grows.
+        for (var i = 0; i < NecropolisTendrils; i++)
+        {
+            var guardAngle = MathHelper.TwoPi * i / NecropolisTendrils;
+            var pos = center + new System.Numerics.Vector2(
+                MathF.Round(MathF.Cos(guardAngle) * NecropolisGuardRadius),
+                MathF.Round(MathF.Sin(guardAngle) * NecropolisGuardRadius));
+
+            Spawn(TendrilProto, new EntityCoordinates(mapUid, pos));
         }
     }
 
@@ -246,6 +348,9 @@ public sealed class LavalandPlanetSystem : EntitySystem
     /// </summary>
     private void DamageExposed(EntityUid mapUid)
     {
+        // Damaging mid-enumeration can kill a mob, whose death spawns/deletes entities
+        // and invalidates the query. Collect first, damage after.
+        var targets = new List<EntityUid>();
         var mobs = EntityQueryEnumerator<MobStateComponent, TransformComponent>();
 
         while (mobs.MoveNext(out var mob, out _, out var xform))
@@ -262,6 +367,11 @@ public sealed class LavalandPlanetSystem : EntitySystem
                     continue;
             }
 
+            targets.Add(mob);
+        }
+
+        foreach (var mob in targets)
+        {
             _damageable.TryChangeDamage(mob, _stormDamage, interruptsDoAfters: false);
         }
     }

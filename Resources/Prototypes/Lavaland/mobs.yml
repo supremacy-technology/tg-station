@@ -1,0 +1,371 @@
+# Lavaland fauna ported from SS13 tg-station. Stats mirror the SS13 originals.
+
+- type: entity
+  id: MobLegion
+  parent: BaseMobAsteroid
+  name: legion
+  description: A swarming mass of shadowy skulls wearing the body of a dead miner like a puppet.
+  components:
+  - type: Sprite
+    drawdepth: Mobs
+    sprite: Mobs/Aliens/Lavaland/legion.rsi
+    layers:
+    - map: [ "enum.DamageStateVisualLayers.Base" ]
+      state: legion
+    - map: [ "enum.DamageStateVisualLayers.BaseUnshaded" ]
+      state: unshaded
+      shader: unshaded
+  - type: DamageStateVisuals
+    states:
+      Alive:
+        Base: legion
+        BaseUnshaded: unshaded
+      Dead:
+        Base: legion
+        BaseUnshaded: unshaded
+  - type: MobThresholds
+    thresholds:
+      0: Alive
+      75: Dead
+  - type: MovementSpeedModifier
+    baseWalkSpeed: 2.2
+    baseSprintSpeed: 2.2
+  - type: MeleeWeapon
+    soundHit:
+      path: /Audio/Weapons/bladeslice.ogg
+    angle: 0
+    attackRate: 0.75
+    damage:
+      types:
+        Slash: 15
+  - type: NpcFactionMember
+    factions:
+    - SimpleHostile
+  - type: HTN
+    rootTask:
+      task: SimpleHostileCompound
+  - type: PointLight
+    radius: 1.2
+    energy: 2
+    color: "#7b1c1c"
+  # On death the body collapses into a regenerative core and a swarm of skulls.
+  - type: Destructible
+    thresholds:
+    - trigger:
+        !type:DamageTrigger
+        damage: 75
+      behaviors:
+      - !type:PlaySoundBehavior
+        sound:
+          path: /Audio/Effects/bone_rattle.ogg
+      - !type:SpawnEntitiesBehavior
+        spawn:
+          LegionCore:
+            min: 1
+            max: 1
+          MobLegionSkull:
+            min: 2
+            max: 3
+      - !type:DoActsBehavior
+        acts: [ "Destruction" ]
+
+- type: entity
+  id: MobLegionSkull
+  parent: [ SimpleSpaceMobBase, FlyingMobBase ]
+  name: legion skull
+  description: A shadowy skull tumbling through the air on ragged wings.
+  components:
+  - type: NpcFactionMember
+    factions:
+    - SimpleHostile
+  - type: HTN
+    rootTask:
+      task: SimpleHostileCompound
+  - type: Sprite
+    drawdepth: Mobs
+    sprite: Mobs/Aliens/Lavaland/legion_skull.rsi
+    layers:
+    - map: [ "enum.DamageStateVisualLayers.Base" ]
+      state: skull
+  - type: DamageStateVisuals
+    states:
+      Alive:
+        Base: skull
+      Dead:
+        Base: skull
+  - type: Fixtures
+    fixtures:
+      fix1:
+        shape:
+          !type:PhysShapeCircle
+          radius: 0.25
+        density: 30
+        mask:
+        - FlyingMobMask
+        layer:
+        - FlyingMobLayer
+  - type: MobThresholds
+    thresholds:
+      0: Alive
+      20: Dead
+  - type: MovementSpeedModifier
+    baseWalkSpeed: 4
+    baseSprintSpeed: 5
+  - type: MeleeWeapon
+    soundHit:
+      path: /Audio/Effects/bite.ogg
+    angle: 0
+    attackRate: 1.2
+    damage:
+      types:
+        Slash: 5
+  - type: PointLight
+    radius: 1
+    energy: 2
+    color: "#7b1c1c"
+  # Skulls shatter on death, no corpse.
+  - type: Destructible
+    thresholds:
+    - trigger:
+        !type:DamageTrigger
+        damage: 20
+      behaviors:
+      - !type:PlaySoundBehavior
+        sound:
+          path: /Audio/Effects/bone_rattle.ogg
+      - !type:DoActsBehavior
+        acts: [ "Destruction" ]
+
+- type: entity
+  id: MobBrimdemon
+  parent: BaseMobAsteroid
+  name: brimdemon
+  description: A misshapen demon that vomits searing beams of light from its cackling maw.
+  components:
+  - type: Sprite
+    drawdepth: Mobs
+    sprite: Mobs/Aliens/Lavaland/brimdemon.rsi
+    layers:
+    - map: [ "enum.DamageStateVisualLayers.Base" ]
+      state: brimdemon
+    - map: [ "enum.DamageStateVisualLayers.BaseUnshaded" ]
+      state: unshaded
+      shader: unshaded
+  - type: DamageStateVisuals
+    states:
+      Alive:
+        Base: brimdemon
+        BaseUnshaded: unshaded
+      Dead:
+        Base: dead
+        BaseUnshaded: dead
+  - type: MobThresholds
+    thresholds:
+      0: Alive
+      250: Dead
+  - type: MovementSpeedModifier
+    baseWalkSpeed: 2.2
+    baseSprintSpeed: 2.2
+  - type: NpcFactionMember
+    factions:
+    - SimpleHostile
+  - type: HTN
+    rootTask:
+      task: SimpleRangedHostileCompound
+  - type: BatteryAmmoProvider
+    proto: BrimdemonBolt
+    fireCost: 50
+  - type: BatterySelfRecharger
+    autoRechargeRate: 40
+  - type: Battery
+    maxCharge: 1000
+    startingCharge: 1000
+  - type: Gun
+    fireRate: 0.75
+    useKey: false
+    selectedMode: SemiAuto
+    availableModes:
+    - SemiAuto
+    soundGunshot: /Audio/Weapons/Guns/Gunshots/laser.ogg
+  - type: CombatMode
+  - type: PointLight
+    radius: 1.5
+    energy: 2.5
+    color: "#e0271f"
+  - type: Butcherable
+    spawned:
+    - id: FoodMeatXeno
+      amount: 2
+
+- type: entity
+  id: MobBileworm
+  parent: BaseMobAsteroid
+  name: bileworm
+  description: A worm that spews bile at anything it can see.
+  components:
+  - type: Sprite
+    drawdepth: Mobs
+    noRot: true
+    sprite: Mobs/Aliens/Lavaland/bileworm.rsi
+    layers:
+    - map: [ "enum.DamageStateVisualLayers.Base" ]
+      state: bileworm
+    - map: [ "enum.DamageStateVisualLayers.BaseUnshaded" ]
+      state: unshaded
+      shader: unshaded
+  - type: DamageStateVisuals
+    states:
+      Alive:
+        Base: bileworm
+        BaseUnshaded: unshaded
+      Dead:
+        Base: dead
+        BaseUnshaded: dead
+  - type: MobThresholds
+    thresholds:
+      0: Alive
+      110: Dead
+  - type: MovementSpeedModifier
+    baseWalkSpeed: 2.5
+    baseSprintSpeed: 2.5
+  - type: MeleeWeapon
+    soundHit:
+      path: /Audio/Effects/bite.ogg
+    angle: 0
+    attackRate: 1
+    damage:
+      types:
+        Caustic: 10
+  - type: NpcFactionMember
+    factions:
+    - SimpleHostile
+  - type: HTN
+    rootTask:
+      task: SimpleHostileCompound
+  - type: Butcherable
+    spawned:
+    - id: FoodMeatXeno
+      amount: 2
+  # ponytail: SS13 bileworm burrows and resurfaces under prey; plain chaser for now.
+
+- type: entity
+  id: MobLobstrosity
+  parent: [ BaseMobAsteroid, MobBloodstream ]
+  name: lobstrosity
+  description: A hulking crustacean predator with claws that can shear through bone.
+  components:
+  - type: Sprite
+    drawdepth: Mobs
+    sprite: Mobs/Aliens/Lavaland/lobstrosity.rsi
+    layers:
+    - map: [ "enum.DamageStateVisualLayers.Base" ]
+      state: lobstrosity
+    - map: [ "enum.DamageStateVisualLayers.BaseUnshaded" ]
+      state: unshaded
+      shader: unshaded
+  - type: DamageStateVisuals
+    states:
+      Alive:
+        Base: lobstrosity
+        BaseUnshaded: unshaded
+      Dead:
+        Base: dead
+        BaseUnshaded: dead
+  - type: MobThresholds
+    thresholds:
+      0: Alive
+      150: Dead
+  - type: MovementSpeedModifier
+    baseWalkSpeed: 3
+    baseSprintSpeed: 3.4
+  - type: MeleeWeapon
+    soundHit:
+      path: /Audio/Weapons/pierce.ogg
+    angle: 0
+    attackRate: 0.8
+    damage:
+      types:
+        Slash: 12
+        Blunt: 5
+  - type: NpcFactionMember
+    factions:
+    - SimpleHostile
+  - type: HTN
+    rootTask:
+      task: SimpleHostileCompound
+  - type: Butcherable
+    spawned:
+    - id: FoodMeatCrab
+      amount: 3
+
+# Brimdemon ranged attack
+- type: entity
+  name: brim bolt
+  id: BrimdemonBolt
+  parent: BaseBullet
+  categories: [ HideSpawnMenu ]
+  components:
+  - type: FlyBySound
+    sound:
+      collection: EnergyMiss
+      params:
+        volume: 5
+  - type: Sprite
+    sprite: Objects/Weapons/Guns/Projectiles/projectiles_tg.rsi
+    layers:
+    - state: omnilaser
+      shader: unshaded
+      color: "#ff3c28"
+  - type: Ammo
+    muzzleFlash: MuzzleFlashEffectOmnilaser
+  - type: Physics
+  - type: Fixtures
+    fixtures:
+      projectile:
+        shape:
+          !type:PhysShapeAabb
+          bounds: "-0.2,-0.2,0.2,0.2"
+        hard: false
+        mask:
+        - Opaque
+  - type: Projectile
+    damage:
+      types:
+        Heat: 12
+
+# Legion regenerative core: crush it against yourself for a strong instant heal.
+- type: stack
+  parent: BaseSmallStack
+  id: LegionCore
+  name: stack-legion-core
+  spawn: LegionCore
+  maxCount: 5
+
+- type: entity
+  id: LegionCore
+  parent: BaseItem
+  name: regenerative core
+  description: A strange rock that crawls with restorative hivelord tendrils. Use it before it decays.
+  components:
+  - type: Sprite
+    sprite: Objects/Specific/Mining/legion_core.rsi
+    state: core
+  - type: Item
+    size: Small
+  - type: Stack
+    stackType: LegionCore
+    count: 1
+  - type: Healing
+    delay: 1
+    damageContainers:
+    - Biological
+    damage:
+      types:
+        Blunt: -20
+        Slash: -20
+        Piercing: -20
+        Heat: -20
+        Cold: -20
+        Asphyxiation: -20
+    healingEndSound:
+      path: /Audio/Items/Medical/ointment_end.ogg

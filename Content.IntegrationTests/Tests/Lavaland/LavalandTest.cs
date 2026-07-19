@@ -48,10 +48,33 @@ public sealed class LavalandTest : GameTest
                     misaligned += $"{pos} ";
             }
         });
+        var tendrils = 0;
+        var drakes = 0;
+        await server.WaitPost(() =>
+        {
+            foreach (var (meta, xform) in entMan.EntityQuery<MetaDataComponent, TransformComponent>(true))
+            {
+                if (xform.MapUid != planet)
+                    continue;
+
+                switch (meta.EntityPrototype?.ID)
+                {
+                    case "StructureTendril":
+                        tendrils++;
+                        break;
+                    case "MobAshDrake":
+                        drakes++;
+                        break;
+                }
+            }
+        });
+
         Assert.Multiple(() =>
         {
-            Assert.That(childGrids, Is.EqualTo(9), $"Expected outpost + 8 ruins, got {childGrids} grids");
+            Assert.That(childGrids, Is.EqualTo(10), $"Expected outpost + 8 ruins + necropolis, got {childGrids} grids");
             Assert.That(misaligned, Is.Empty, $"Grids not tile-aligned at: {misaligned}");
+            Assert.That(tendrils, Is.EqualTo(10), $"Expected 6 scattered + 4 necropolis tendrils, got {tendrils}");
+            Assert.That(drakes, Is.EqualTo(1), $"Expected one ash drake, got {drakes}");
         });
 
         // Force the storm scheduler to fire now.
@@ -68,5 +91,27 @@ public sealed class LavalandTest : GameTest
             stormActive = entMan.EntityQuery<WeatherStatusEffectComponent>(true).Any();
         });
         Assert.That(stormActive, "Ash storm weather never started after NextStormTime elapsed");
+
+        // Storm damage killing a mob mid-tick must not invalidate the damage enumeration
+        // (legion death spawns skulls + deletes the corpse).
+        var legion = EntityUid.Invalid;
+        await server.WaitPost(() =>
+        {
+            legion = entMan.SpawnEntity("MobLegion",
+                new Robust.Shared.Map.EntityCoordinates(planet, new System.Numerics.Vector2(50f, 50f)));
+
+            var damageable = server.System<Content.Shared.Damage.Systems.DamageableSystem>();
+            var protoMan = server.ResolveDependency<Robust.Shared.Prototypes.IPrototypeManager>();
+            var damage = new Content.Shared.Damage.DamageSpecifier(
+                protoMan.Index<Content.Shared.Damage.Prototypes.DamageTypePrototype>("Heat"), 74);
+            damageable.TryChangeDamage(legion, damage, ignoreResistances: true);
+
+            var comp = entMan.GetComponent<LavalandMapComponent>(planet);
+            comp.StormEndTime = TimeSpan.FromHours(1);
+            comp.NextDamageTime = TimeSpan.Zero;
+        });
+
+        await server.WaitRunTicks(10);
+        Assert.That(entMan.Deleted(legion), "Legion should have died to the storm tick and shattered");
     }
 }
