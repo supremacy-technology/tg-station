@@ -10,6 +10,8 @@ using Content.Shared.Damage.Systems;
 using Content.Shared.FixedPoint;
 using Content.Shared.Light.Components;
 using Content.Shared.Mobs.Components;
+using Content.Shared.NPC.Prototypes;
+using Content.Shared.NPC.Systems;
 using Content.Shared.Parallax.Biomes;
 using Content.Shared.Salvage;
 using Robust.Shared.Configuration;
@@ -37,6 +39,7 @@ public sealed class LavalandPlanetSystem : EntitySystem
     [Dependency] private readonly DamageableSystem _damageable = default!;
     [Dependency] private readonly MapLoaderSystem _loader = default!;
     [Dependency] private readonly MetaDataSystem _metaData = default!;
+    [Dependency] private readonly NpcFactionSystem _faction = default!;
     [Dependency] private readonly SharedMapSystem _mapSystem = default!;
     [Dependency] private readonly SharedTransformSystem _transform = default!;
     [Dependency] private readonly ShuttleSystem _shuttle = default!;
@@ -45,6 +48,8 @@ public sealed class LavalandPlanetSystem : EntitySystem
     private static readonly ProtoId<BiomeTemplatePrototype> BiomeTemplate = "Lavaland";
     private static readonly EntProtoId StormWeather = "WeatherAshfallHeavy";
     private static readonly ProtoId<DamageTypePrototype> StormDamageType = "Heat";
+    // Native fauna doesn't burn in its own weather.
+    private static readonly ProtoId<NpcFactionPrototype> StormImmuneFaction = "SimpleHostile";
 
     private static readonly string[] OreLayers =
     {
@@ -356,6 +361,9 @@ public sealed class LavalandPlanetSystem : EntitySystem
         while (mobs.MoveNext(out var mob, out _, out var xform))
         {
             if (xform.MapUid != mapUid)
+                continue;
+
+            if (_faction.IsMember(mob, StormImmuneFaction))
                 continue;
 
             if (xform.GridUid is { } gridUid && TryComp(gridUid, out MapGridComponent? grid))

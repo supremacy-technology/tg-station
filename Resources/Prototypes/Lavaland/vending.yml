@@ -1,0 +1,30 @@
+# Mining equipment vendor for the lavaland outpost.
+
+- type: vendingMachineInventory
+  id: MiningEquipmentInventory
+  startingInventory:
+    WeaponProtoKineticAccelerator: 4
+    PKAUpgradeDamage: 1
+    PKAUpgradeRange: 1
+    PKAUpgradeFireRate: 1
+    WeaponCrusher: 2
+    Pickaxe: 4
+    OreBag: 4
+    FlashlightLantern: 3
+    Flare: 8
+    HandheldGPSBasic: 3
+    RadioHandheld: 2
+    Brutepack: 3
+    Ointment: 3
+
+- type: entity
+  parent: VendingMachineSalvage
+  id: VendingMachineMining
+  name: Mining Equipment Vendor
+  description: All the essentials for prying riches out of a planet that wants you dead.
+  components:
+  - type: VendingMachine
+    pack: MiningEquipmentInventory
+  # Frontier outpost: anyone stranded here can gear up.
+  - type: AccessReader
+    access: []

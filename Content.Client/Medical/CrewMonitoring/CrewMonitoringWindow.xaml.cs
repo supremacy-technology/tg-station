@@ -304,7 +304,7 @@ public sealed partial class CrewMonitoringWindow : FancyWindow
             jobContainer.AddChild(jobLabel);
 
             // Add user coordinates to the navmap
-            if (coordinates != null && NavMap.Visible && _blipTexture != null)
+            if (coordinates != null && NavMap.Visible && _blipTexture != null && SameMapAsNavMap(coordinates.Value))
             {
                 NavMap.TrackedEntities.TryAdd(sensor.SuitSensorUid,
                     new NavMapBlip
@@ -428,6 +428,17 @@ public sealed partial class CrewMonitoringWindow : FancyWindow
     /// blip will move smoothly, unlike the others. By converting the
     /// coordinates, we are back in control of the blip movement.
     /// </summary>
+    /// <summary>
+    /// Sensors on another map (e.g. a mining planet) can't be drawn on this navmap
+    /// and would fail coordinate conversion.
+    /// </summary>
+    private bool SameMapAsNavMap(EntityCoordinates refCoords)
+    {
+        return NavMap.MapUid is not { } navMapUid
+            || !_entManager.TryGetComponent<TransformComponent>(navMapUid, out var navXform)
+            || refCoords.GetMapId(_entManager) == navXform.MapID;
+    }
+
     private EntityCoordinates CoordinatesToLocal(EntityCoordinates refCoords)
     {
         if (NavMap.MapUid != null)
