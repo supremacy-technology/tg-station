@@ -86,6 +86,12 @@ public sealed partial class CCVars
     public static readonly CVarDef<bool> GatewayGeneratorEnabled =
         CVarDef.Create("gateway.generator_enabled", true);
 
+    /// <summary>
+    ///     Whether the persistent Lavaland mining planet is generated at round start.
+    /// </summary>
+    public static readonly CVarDef<bool> LavalandEnabled =
+        CVarDef.Create("lavaland.enabled", true, CVar.SERVERONLY);
+
     public static readonly CVarDef<string> TippyEntity =
         CVarDef.Create("tippy.entity", "Tippy", CVar.SERVER | CVar.REPLICATED);
 

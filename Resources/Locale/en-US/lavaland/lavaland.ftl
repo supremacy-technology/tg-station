@@ -1,0 +1,1 @@
+lavaland-map-name = Lavaland

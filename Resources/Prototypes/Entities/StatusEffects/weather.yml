@@ -3,6 +3,10 @@
   id: WeatherBase
   abstract: true
   components:
+  - type: Transform
+    # Weather lives in the map's status effect container; without this, a grid
+    # covering the map origin steals the effect during container insertion.
+    gridTraversal: false
   - type: WeatherStatusEffect
   - type: StatusEffect
     whitelist:
