@@ -117,6 +117,7 @@ public sealed class LavalandPlanetSystem : EntitySystem
     private static readonly ResPath NecropolisPath = new("/Maps/Lavaland/temple.yml");
     private static readonly EntProtoId TendrilProto = "StructureTendril";
     private static readonly EntProtoId DrakeProto = "MobAshDrake";
+    private static readonly EntProtoId BoundaryWallProto = "WallPlastitaniumIndestructible";
 
     private const int RuinCount = 8;
     private const float RuinMinRadius = 90f;
@@ -165,11 +166,6 @@ public sealed class LavalandPlanetSystem : EntitySystem
         _metaData.SetEntityName(mapUid, Loc.GetString("lavaland-map-name"));
         _biome.EnsurePlanet(mapUid, _protoManager.Index(BiomeTemplate), seed, mapLight: Color.FromHex("#A34931"));
 
-        AddComp(mapUid, new RestrictedRangeComponent
-        {
-            Range = PlanetRange,
-        });
-
         var biome = Comp<BiomeComponent>(mapUid);
 
         foreach (var layer in OreLayers)
@@ -191,6 +187,7 @@ public sealed class LavalandPlanetSystem : EntitySystem
         PlaceRuins(mapId);
         PlaceTendrils(mapUid);
         PlaceNecropolis(mapUid, mapId);
+        PlaceBoundaryWalls(mapUid);
 
         // One roaming boss per round.
         var drakeAngle = MathHelper.TwoPi * _random.NextFloat();
@@ -383,4 +380,37 @@ public sealed class LavalandPlanetSystem : EntitySystem
             _damageable.TryChangeDamage(mob, _stormDamage, interruptsDoAfters: false);
         }
     }
+
+    /// <summary>
+    /// Seals the planet with a square ring of indestructible walls at the edge,
+    /// replacing the old soft RestrictedRangeComponent boundary.
+    /// </summary>
+    private void PlaceBoundaryWalls(EntityUid mapUid)
+    {
+        // PlanetRange is treated as the half-side length of the square.
+        var half = (int) MathF.Round(PlanetRange);
+        var placed = new HashSet<Vector2i>();
+
+        for (var x = -half; x <= half; x++)
+        {
+            placed.Add(new Vector2i(x, -half)); // south edge
+            placed.Add(new Vector2i(x, half));  // north edge
+        }
+
+        for (var y = -half; y <= half; y++)
+        {
+            placed.Add(new Vector2i(-half, y)); // west edge
+            placed.Add(new Vector2i(half, y));  // east edge
+        }
+
+        foreach (var tile in placed)
+        {
+            var wall = Spawn(BoundaryWallProto, new EntityCoordinates(mapUid, tile));
+
+            // Belt-and-suspenders: even if the prototype is mineable/explosive-vulnerable
+            // upstream, stripping Damageable means nothing can ever apply damage to it.
+            //RemComp<DamageableComponent>(wall);
+        }
+    }
+
 }
