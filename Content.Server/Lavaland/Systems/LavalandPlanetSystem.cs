@@ -166,6 +166,11 @@ public sealed class LavalandPlanetSystem : EntitySystem
         _metaData.SetEntityName(mapUid, Loc.GetString("lavaland-map-name"));
         _biome.EnsurePlanet(mapUid, _protoManager.Index(BiomeTemplate), seed, mapLight: Color.FromHex("#A34931"));
 
+        AddComp(mapUid, new RestrictedRangeComponent
+        {
+            Range = PlanetRange,
+        });
+
         var biome = Comp<BiomeComponent>(mapUid);
 
         foreach (var layer in OreLayers)
@@ -187,7 +192,7 @@ public sealed class LavalandPlanetSystem : EntitySystem
         PlaceRuins(mapId);
         PlaceTendrils(mapUid);
         PlaceNecropolis(mapUid, mapId);
-        PlaceBoundaryWalls(mapUid);
+        //PlaceBoundaryWalls(mapUid);
 
         // One roaming boss per round.
         var drakeAngle = MathHelper.TwoPi * _random.NextFloat();
